@@ -420,7 +420,7 @@ def _media_dims(path):
 
 
 def hero(t, dark):
-    w, h = 1000, 458
+    w, h = 1000, 410
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=40, rx=24)
 
     # Embedded fonts + Vertical hairline editorial grid + cubic mesh gradient
@@ -477,14 +477,6 @@ def hero(t, dark):
     b += T(px, 290, CFG["label"], 16, t["text"], 700, HEAD, ls=-0.5)
     for i, ln in enumerate(wrap(CFG["tagline"], 44)[:3]):
         b += T(px, 318 + i * 23, ln, 15, t["secondary"], 400, HEAD, ls=-0.42)
-
-    # Action visual controls
-    bw = 172
-    b += f'<rect x="{px}" y="376" width="{bw}" height="40" rx="12" fill="{t["btn_bg"]}"/>'
-    b += T(px + 18, 401, "View Portfolio", 13.5, t["btn_fg"], 600, HEAD)
-    b += arrow_ne(px + bw - 28, 390, 10, t["btn_fg"], sw=2)
-    b += T(px + bw + 20, 401, "Browse Repositories", 13.5, t["secondary"], 600, HEAD)
-    b += arrow_r(px + bw + 170, 390, 12, t["secondary"], sw=1.8)
 
     # Right media frame: border & margins matched strictly to video aspect ratio (280:239)
     p_gif = ROOT / "assets" / "hero.gif"
@@ -621,7 +613,7 @@ def stats_card(t, dark, S):
 
 
 def tile(kind, t, dark):
-    w, h = 333.33, 370
+    w, h = 333.33, 240
     c = CFG["tiles"][kind]
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=26, ix=7, iy=8, rx=24)
 
@@ -630,7 +622,7 @@ def tile(kind, t, dark):
         "solve": [("0%", "#FDE047", "0.92"), ("34%", "#FB7185", "0.76"), ("70%", "#DC2626", "0.52"), ("100%", "#DC2626", "0")],
         "create": [("0%", "#FEF08A", "0.95"), ("40%", "#FBBF24", "0.80"), ("74%", "#EA580C", "0.54"), ("100%", "#EA580C", "0")],
     }[kind]
-    defs += font_style("a400", "a700", "m400") + cubic_orb_defs(kind, w, h, t, "50%", "96%", "62%", orb_stops, "166", "345", "185", "175")
+    defs += font_style("a400", "a700", "m400") + cubic_orb_defs(kind, w, h, t, "50%", "96%", "62%", orb_stops, "166", "225", "185", "130")
 
     b = bg
     b += cubic_orb_layer(kind, ix, iy, cw, ch, opacity=0.90 if not dark else 0.78)
@@ -657,12 +649,6 @@ def tile(kind, t, dark):
 
     for i, ln in enumerate(wrap(c["text"], 27)[:3]):
         b += T(px, dy + i * 22, ln, 14, t["secondary"], 400, HEAD)
-
-    if kind == "create":
-        cy = 204
-        b += f'<rect x="{px}" y="{cy}" width="150" height="34" rx="10" fill="{t["pill"]}" stroke="{t["border_strong"]}" stroke-width="1"/>'
-        b += T(px + 14, cy + 21, "View Portfolio", 12, t["text"], 600, MONO)
-        b += arrow_ne(px + 128, cy + 12, 8.5, t["text"], sw=1.8)
 
     b += br
     u = c.get("unit", "")
@@ -932,7 +918,7 @@ def coding_label(t, dark):
 
 
 def project(p, t, dark):
-    w, h = 333.33, 288
+    w, h = 333.33, 204
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=24, ix=7, iy=8, rx=24)
 
     palette = {
@@ -941,7 +927,7 @@ def project(p, t, dark):
         "yellow": (t["amber"], "Python · MySQL", [("0%", "#FBBF24", "0.62"), ("55%", "#F59E0B", "0.25"), ("100%", "#F59E0B", "0")]),
     }
     dot_col, sub_tag, stops = palette.get(p["color"], palette["green"])
-    defs += font_style("a400", "a700", "m400") + cubic_orb_defs(p["slug"], w, h, t, "88%", "74%", "58%", stops, "280", "205", "165", "150")
+    defs += font_style("a400", "a700", "m400") + cubic_orb_defs(p["slug"], w, h, t, "88%", "74%", "58%", stops, "280", "150", "165", "120")
 
     b = bg
     b += cubic_orb_layer(p["slug"], ix, iy, cw, ch, opacity=0.84 if not dark else 0.72)
@@ -963,11 +949,9 @@ def project(p, t, dark):
     for i, ln in enumerate(wrap(p["desc"], 27)[:3]):
         b += T(px, dy + i * 21, ln, 13.5, t["secondary"], 400, HEAD, ls=-0.35)
 
-    # Bottom footer bar
-    b += f'<line x1="{px}" y1="214" x2="{pr}" y2="214" stroke="{t["border"]}" stroke-width="1"/>'
-    b += T(px, 246, "README", 12, t["text"], 700, MONO)
-    b += f'<rect x="{pr-30}" y="226" width="30" height="30" rx="10" fill="{t["subtle"]}" stroke="{t["border"]}" stroke-width="1"/>'
-    b += arrow_ne(pr - 19.5, 236.5, 9, t["text"], sw=1.8)
+    # Arrow badge only (README text removed per user request)
+    b += f'<rect x="{pr-28}" y="{h-44}" width="28" height="28" rx="9" fill="{t["subtle"]}" stroke="{t["border"]}" stroke-width="1"/>'
+    b += arrow_ne(pr - 18.5, h - 34.5, 8.5, t["text"], sw=1.8)
     b += br
     return svg(w, h, defs, b, f'{p["name"]}: {p["desc"]} ({p["tag"]}). Opens the repository.')
 
@@ -1002,14 +986,14 @@ CONTACT_THEMES = {
 
 
 def contact_btn(key, name, filled, yellow, t, dark):
-    w, h = 250, 108
+    w, h = 250, 64
     defs, bg, _, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=18, ix=6, iy=6, rx=16)
     ct = CONTACT_THEMES.get(key, CONTACT_THEMES["linkedin"])
     border_col = ct["border_dark"] if dark else ct["border_light"]
     dot_col = ct["dot_dark"] if dark else ct["dot_light"]
 
     defs += font_style("a700", "m400") + cubic_orb_defs(
-        f"c-{key}", w, h, t, "84%", "86%", "78%", ct["stops"], "206", "92", "185", "88", tile_size=24
+        f"c-{key}", w, h, t, "84%", "86%", "78%", ct["stops"], "206", "54", "185", "54", tile_size=20
     )
 
     orb_op = (0.86 if not dark else 0.72) if filled else (0.64 if not dark else 0.52)
@@ -1018,18 +1002,15 @@ def contact_btn(key, name, filled, yellow, t, dark):
     b += f'<rect x="{ix}" y="{iy}" width="{cw:g}" height="{ch:g}" rx="16" fill="none" stroke="{border_col}" stroke-width="1.5"/>'
 
     text_op = "1" if filled else "0.78"
+    mid_y = h / 2.0
     b += f'<g opacity="{text_op}">'
-    b += f'<rect x="{px}" y="30.5" width="8" height="8" rx="2.5" fill="{dot_col}"/>'
-    b += T(px + 14, 39.5, name, 14, t["text"], 700, HEAD)
+    b += f'<rect x="{px}" y="{mid_y - 4:.1f}" width="8" height="8" rx="2.5" fill="{dot_col}"/>'
+    b += T(px + 15, mid_y + 4.5, name, 13.5, t["text"], 700, HEAD)
     if filled:
-        b += arrow_ne(pr - 12, 29, 9, t["text"], sw=2)
-        sub = "Open live site" if yellow else "Connect"
-        b += T(px, 78, sub, 11, t["secondary"] if not dark else "#CBD5E1", 600, MONO)
+        b += arrow_ne(pr - 10, mid_y - 4.5, 9, t["text"], sw=2)
     else:
-        b += T(pr - 4, 39.5, "·", 14, t["muted"], 700, MONO, anchor="end")
-        b += T(px, 78, "Coming soon", 11, t["muted"], 400, MONO)
+        b += T(pr - 4, mid_y + 4.5, "·", 14, t["muted"], 700, MONO, anchor="end")
     b += "</g>"
-
     return svg(w, h, defs, b, f"{name} link" + ("" if filled else " (coming soon)"))
 
 
