@@ -10,7 +10,7 @@
 
 <div><picture><source media="(prefers-color-scheme: dark)" srcset="assets/dark/tech.svg"><source media="(prefers-color-scheme: light)" srcset="assets/light/tech.svg"><img alt="Tech I use: Java, Python, Android, MySQL, SQLite, Firebase, Tkinter, Django (basics). Currently learning: Django, API, Building projects" src="assets/light/tech.svg" width="100%" align="top"></picture></div>
 
-<div><picture><source media="(prefers-color-scheme: dark)" srcset="assets/dark/how-i-work.svg"><source media="(prefers-color-scheme: light)" srcset="assets/light/how-i-work.svg"><img alt="How I work: AI-assisted development with Claude, Codex, ChatGPT, Antigravity" src="assets/light/how-i-work.svg" width="100%" align="top"></picture></div>
+<div><picture><source media="(prefers-color-scheme: dark)" srcset="assets/dark/how-i-work.svg"><source media="(prefers-color-scheme: light)" srcset="assets/light/how-i-work.svg"><img alt="My Workflow: 01 Ideate, 02 Plan, 03 Build, 04 Refine" src="assets/light/how-i-work.svg" width="100%" align="top"></picture></div>
 
 <div><a href="https://github.com/tarun-suthar-04?tab=repositories"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/dark/coding-label.svg"><source media="(prefers-color-scheme: light)" srcset="assets/light/coding-label.svg"><img alt="What i Built" src="assets/light/coding-label.svg" width="100%" align="top"></picture></a></div>
 

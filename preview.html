@@ -957,41 +957,210 @@
       letter-spacing: -0.03em;
     }
 
-    .workflow-lead {
-      margin: 0 0 22px;
-      font-size: clamp(1.2rem, 2.2vw, 1.55rem);
-      font-weight: 600;
-      line-height: 1.38;
-      letter-spacing: -0.035em;
-      color: var(--text-primary);
-      max-width: 56ch;
+    /* ------------------------------------------------------------------
+       06b. My Workflow (Animated SVG Pipeline + Balanced 2x2 Step Grid)
+    ------------------------------------------------------------------ */
+    .wf-cubic-layer {
+      mask-image: radial-gradient(ellipse 72% 72% at 92% 14%, #000 10%, transparent 72%);
+      -webkit-mask-image: radial-gradient(ellipse 72% 72% at 92% 14%, #000 10%, transparent 72%);
     }
 
-    .tools-row {
+    .wf-mesh {
+      background:
+        radial-gradient(circle at 90% 14%, rgba(16, 185, 129, 0.28), transparent 52%),
+        radial-gradient(circle at 72% 24%, rgba(37, 99, 235, 0.20), transparent 55%);
+    }
+
+    .wf-pipeline-box {
+      border-radius: 18px;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border-hairline);
+      padding: 6px 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .wf-pipeline-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .wf-flow {
+      stroke-dasharray: 6 8;
+      animation: wfDash 1.4s linear infinite;
+    }
+
+    .wf-ret {
+      stroke-dasharray: 5 7;
+      animation: wfRet 1.8s linear infinite;
+    }
+
+    .wf-spin {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: wfSpin 6s linear infinite;
+    }
+
+    .wf-spark {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: wfSpark 2s ease-in-out infinite;
+    }
+
+    .wf-packet {
+      animation: wfPacket 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    }
+
+    .wf-s1 { animation: wfStep1 8s ease-in-out infinite; }
+    .wf-s2 { animation: wfStep2 8s ease-in-out infinite; }
+    .wf-s3 { animation: wfStep3 8s ease-in-out infinite; }
+    .wf-s4 { animation: wfStep4 8s ease-in-out infinite; }
+    .wf-ret-pulse { animation: wfRetPulse 8s ease-in-out infinite; }
+
+    @keyframes wfDash { to { stroke-dashoffset: -28; } }
+    @keyframes wfRet  { to { stroke-dashoffset: 24; } }
+    @keyframes wfSpin { to { transform: rotate(360deg); } }
+    @keyframes wfSpark {
+      0%, 100% { transform: scale(1); opacity: 0.78; }
+      50%      { transform: scale(1.12); opacity: 1; }
+    }
+    @keyframes wfPacket {
+      0%, 17%  { transform: translateX(0px); opacity: 1; }
+      25%, 42% { transform: translateX(226px); opacity: 1; }
+      50%, 67% { transform: translateX(452px); opacity: 1; }
+      75%, 90% { transform: translateX(678px); opacity: 1; }
+      93%      { transform: translateX(678px); opacity: 0; }
+      97%      { transform: translateX(0px); opacity: 0; }
+      100%     { transform: translateX(0px); opacity: 1; }
+    }
+    @keyframes wfStep1 { 0%, 20% { opacity: 1; } 25%, 95% { opacity: 0.22; } 100% { opacity: 1; } }
+    @keyframes wfStep2 { 0%, 20% { opacity: 0.22; } 25%, 45% { opacity: 1; } 50%, 100% { opacity: 0.22; } }
+    @keyframes wfStep3 { 0%, 45% { opacity: 0.22; } 50%, 70% { opacity: 1; } 75%, 100% { opacity: 0.22; } }
+    @keyframes wfStep4 { 0%, 70% { opacity: 0.22; } 75%, 95% { opacity: 1; } 100% { opacity: 0.22; } }
+    @keyframes wfRetPulse { 0%, 84% { opacity: 0.22; } 91%, 97% { opacity: 0.95; } 100% { opacity: 0.22; } }
+
+    .workflow-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-items: stretch;
     }
 
-    .tool-tile {
-      padding: 16px 18px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(251, 191, 36, 0.05));
-      border: 1px solid rgba(245, 183, 0, 0.35);
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      color: var(--text-primary);
+    .wf-card {
+      position: relative;
+      padding: 20px 22px;
+      border-radius: 16px;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border-hairline);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 176px;
+    }
+
+    .wf-card-ring {
+      position: absolute;
+      inset: -1px;
+      border-radius: 16px;
+      border: 1.5px solid var(--wf-accent);
+      pointer-events: none;
+    }
+
+    .wf-card-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 10px;
     }
 
-    .tool-mark {
+    .wf-step-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-primary);
+    }
+
+    .wf-step-dot {
       width: 8px;
       height: 8px;
-      border-radius: 2px;
-      background: var(--accent-amber);
+      border-radius: 2.5px;
+      background: var(--wf-accent);
+      flex-shrink: 0;
+    }
+
+    .wf-pulse-badge {
+      position: relative;
+      width: 14px;
+      height: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .wf-pulse-halo {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--wf-tint);
+      border: 1px solid var(--wf-accent);
+    }
+
+    .wf-pulse-core {
+      width: 5.5px;
+      height: 5.5px;
+      border-radius: 999px;
+      background: var(--wf-accent);
+      position: relative;
+    }
+
+    .wf-desc {
+      margin: 0;
+      font-size: 13.5px;
+      line-height: 1.48;
+      letter-spacing: -0.025em;
+      color: var(--text-secondary);
+    }
+
+    .wf-footer {
+      padding-top: 12px;
+      border-top: 1px solid var(--border-hairline);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-height: 41px;
+    }
+
+    .wf-tools-label {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .wf-tool-pill {
+      padding: 5px 12px;
+      border-radius: 8px;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-strong);
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.25;
+    }
+
+    .wf-loop-track {
+      width: 100%;
+      display: block;
+      height: 16px;
     }
 
     /* ------------------------------------------------------------------
@@ -1211,9 +1380,11 @@
         padding-left: 0;
         padding-top: 20px;
       }
-      .stack-matrix,
-      .tools-row {
+      .stack-matrix {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .workflow-grid {
+        grid-template-columns: 1fr;
       }
       .contact-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1247,6 +1418,7 @@
       *, *::before, *::after {
         transition: none !important;
         scroll-behavior: auto !important;
+        animation: none !important;
       }
     }
   </style>
@@ -1297,10 +1469,12 @@
       },
       learning: { title: "Currently learning", chips: ["Django", "API", "Building projects"] },
       stack: ["Java", "Python", "Android", "MySQL", "SQLite", "Firebase", "Tkinter", "Django (basics)"],
-      howIWork: {
-        text: "I'm an AI-assisted developer. Once I have an idea, I use AI to design, prototype, and build it, with",
-        tools: ["Claude", "Codex", "ChatGPT", "Antigravity"]
-      },
+      workflow: [
+        { num: "01", title: "IDEATE", desc: "Discuss ideas, explore possibilities, understand requirements, and define the intended outcome.", tools: ["ChatGPT", "Claude"], color: "amber" },
+        { num: "02", title: "PLAN", desc: "Research solutions, break down requirements, compare approaches, and finalize the technology stack.", tools: ["ChatGPT", "Claude"], color: "cobalt" },
+        { num: "03", title: "BUILD", desc: "Create initial prototypes, generate implementations, and develop project features with AI coding assistance.", tools: ["Codex", "Google Antigravity"], color: "green" },
+        { num: "04", title: "REFINE", desc: "Test outputs, identify problems, improve functionality, and iterate until the result meets the requirements.", tools: [], color: "violet" }
+      ],
       projects: [
         { name: "Pixault", slug: "pixault", desc: "Java desktop vault with AES-256 encryption and image steganography.", tag: "Desktop app", color: "green", repo: "" },
         { name: "Order-Manager", slug: "order-manager", desc: "Android retail order app with offline-first SQLite and Firebase sync.", tag: "Android app", color: "red", repo: "" },
@@ -1441,12 +1615,125 @@
         </div>
       `).join("");
 
-      const toolsHtml = cfg.howIWork.tools.map(tool => `
-        <div class="tool-tile">
-          <span>${esc(tool)}</span>
-          <span class="tool-mark" aria-hidden="true"></span>
-        </div>
-      `).join("");
+      const isDarkMode = theme === "dark";
+      const wfAccents = {
+        amber:  { col: isDarkMode ? "#FBBF24" : "#D97706", tint: "rgba(245,158,11,0.14)" },
+        cobalt: { col: isDarkMode ? "#38BDF8" : "#2563EB", tint: "rgba(37,99,235,0.13)" },
+        green:  { col: isDarkMode ? "#34D399" : "#059669", tint: "rgba(16,185,129,0.13)" },
+        violet: { col: isDarkMode ? "#A78BFA" : "#7C3AED", tint: "rgba(124,58,237,0.13)" }
+      };
+      const wfSteps = Array.isArray(cfg.workflow) && cfg.workflow.length === 4 ? cfg.workflow : DEFAULT_CONFIG.workflow;
+      const wfNx = [114, 340, 566, 792];
+      const wfNy = 52;
+
+      const wfNodesSvg = wfSteps.map((st, idx) => {
+        const nx = wfNx[idx];
+        const a = wfAccents[st.color] || wfAccents.amber;
+        const cls = `wf-s${idx + 1}`;
+        let icon = "";
+        if (idx === 0) {
+          icon = `
+            <g class="wf-spark">
+              <circle cx="${nx}" cy="${wfNy}" r="5.5" fill="none" stroke="${a.col}" stroke-width="1.8"/>
+              <path d="M ${nx} ${wfNy - 11} L ${nx} ${wfNy - 8.5} M ${nx - 9.5} ${wfNy - 5.5} L ${nx - 7.5} ${wfNy - 4} M ${nx + 9.5} ${wfNy - 5.5} L ${nx + 7.5} ${wfNy - 4} M ${nx - 3} ${wfNy + 9} L ${nx + 3} ${wfNy + 9}" stroke="${a.col}" stroke-width="1.7" stroke-linecap="round"/>
+            </g>`;
+        } else if (idx === 1) {
+          icon = `
+            <g>
+              <path d="M ${nx - 6} ${wfNy - 5} L ${nx + 5} ${wfNy - 5} M ${nx - 6} ${wfNy} L ${nx + 6} ${wfNy} M ${nx - 6} ${wfNy + 5} L ${nx + 2} ${wfNy + 5}" stroke="${a.col}" stroke-width="1.8" stroke-linecap="round"/>
+              <circle cx="${nx + 7.5}" cy="${wfNy + 5}" r="2.2" fill="${a.col}"/>
+            </g>`;
+        } else if (idx === 2) {
+          icon = `
+            <g>
+              <path d="M ${nx - 4.5} ${wfNy - 5} L ${nx - 9.5} ${wfNy} L ${nx - 4.5} ${wfNy + 5}" fill="none" stroke="${a.col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M ${nx + 4.5} ${wfNy - 5} L ${nx + 9.5} ${wfNy} L ${nx + 4.5} ${wfNy + 5}" fill="none" stroke="${a.col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M ${nx + 1.8} ${wfNy - 6} L ${nx - 1.8} ${wfNy + 6}" fill="none" stroke="${a.col}" stroke-width="1.7" stroke-linecap="round"/>
+            </g>`;
+        } else {
+          icon = `
+            <g class="wf-spin">
+              <path d="M ${nx - 7} ${wfNy - 2} A 7.5 7.5 0 0 1 ${nx + 6.5} ${wfNy - 3.5}" fill="none" stroke="${a.col}" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M ${nx + 4} ${wfNy - 6} L ${nx + 7} ${wfNy - 3.2} L ${nx + 4.2} ${wfNy - 0.8}" fill="none" stroke="${a.col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M ${nx + 7} ${wfNy + 2} A 7.5 7.5 0 0 1 ${nx - 6.5} ${wfNy + 3.5}" fill="none" stroke="${a.col}" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M ${nx - 4} ${wfNy + 6} L ${nx - 7} ${wfNy + 3.2} L ${nx - 4.2} ${wfNy + 0.8}" fill="none" stroke="${a.col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>`;
+        }
+        return `
+          <rect class="${cls}" x="${nx - 28}" y="${wfNy - 28}" width="56" height="56" rx="16" fill="${a.tint}" stroke="${a.col}" stroke-width="1.8"/>
+          <rect x="${nx - 23}" y="${wfNy - 23}" width="46" height="46" rx="13" fill="var(--bg-card)" stroke="var(--border-strong)" stroke-width="1"/>
+          ${icon}
+          <text x="${nx}" y="102" font-family="var(--font-mono)" font-size="11.5" font-weight="700" letter-spacing="0.4" fill="var(--text-primary)" text-anchor="middle">${esc(st.num)} — ${esc(st.title)}</text>
+        `;
+      }).join("");
+
+      const wfConnectorsSvg = [0, 1, 2].map(i => {
+        const x1 = wfNx[i] + 32;
+        const x2 = wfNx[i + 1] - 32;
+        const mx = (x1 + x2) / 2;
+        const a = wfAccents[wfSteps[i].color] || wfAccents.amber;
+        return `
+          <line x1="${x1}" y1="${wfNy}" x2="${x2}" y2="${wfNy}" stroke="var(--border-strong)" stroke-width="1.5"/>
+          <line class="wf-flow" x1="${x1}" y1="${wfNy}" x2="${x2}" y2="${wfNy}" stroke="${a.col}" stroke-width="2" stroke-linecap="round"/>
+          <path d="M ${mx - 3} ${wfNy - 4.5} L ${mx + 3} ${wfNy} L ${mx - 3} ${wfNy + 4.5}" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        `;
+      }).join("");
+
+      const wfPipelineSvg = `
+        <svg class="wf-pipeline-svg" viewBox="0 0 906 116" role="img" aria-label="Animated four-step AI workflow pipeline: Ideate, Plan, Build, Refine">
+          <path d="M 792 26 C 724 4, 182 4, 114 26" fill="none" stroke="var(--border-strong)" stroke-width="1.3"/>
+          <path class="wf-ret wf-ret-pulse" d="M 792 26 C 724 4, 182 4, 114 26" fill="none" stroke="${wfAccents.violet.col}" stroke-width="1.8" stroke-linecap="round"/>
+          <path class="wf-ret-pulse" d="M 120 21 L 114 26 L 121 29" fill="none" stroke="${wfAccents.violet.col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          ${wfConnectorsSvg}
+          <g class="wf-packet">
+            <circle cx="114" cy="${wfNy}" r="9" fill="var(--accent-green-bright)" opacity="0.24"/>
+            <circle cx="114" cy="${wfNy}" r="4.2" fill="var(--text-primary)" stroke="var(--bg-card)" stroke-width="1.5"/>
+          </g>
+          ${wfNodesSvg}
+        </svg>
+      `;
+
+      const wfCardsHtml = wfSteps.map((st, idx) => {
+        const a = wfAccents[st.color] || wfAccents.amber;
+        const cls = `wf-s${idx + 1}`;
+        const footer = st.tools && st.tools.length
+          ? `<span class="wf-tools-label">Tools:</span>${st.tools.map(t => `<span class="wf-tool-pill">${esc(t)}</span>`).join("")}`
+          : `
+            <svg class="wf-loop-track" viewBox="0 0 380 16" aria-hidden="true">
+              <line x1="6" y1="8" x2="352" y2="8" stroke="var(--border-strong)" stroke-width="1.5" stroke-linecap="round"/>
+              <line class="wf-flow" x1="6" y1="8" x2="352" y2="8" stroke="${a.col}" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="6" cy="8" r="4" fill="var(--bg-card)" stroke="${wfAccents.amber.col}" stroke-width="1.8"/>
+              <circle cx="121.3" cy="8" r="4" fill="var(--bg-card)" stroke="${wfAccents.cobalt.col}" stroke-width="1.8"/>
+              <circle cx="236.6" cy="8" r="4" fill="var(--bg-card)" stroke="${wfAccents.green.col}" stroke-width="1.8"/>
+              <circle cx="352" cy="8" r="4" fill="var(--bg-card)" stroke="${wfAccents.violet.col}" stroke-width="1.8"/>
+              <g class="wf-spin">
+                <path d="M 368 4 A 5 5 0 1 1 368 12" fill="none" stroke="${a.col}" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M 366 12.5 L 368.5 12.2 L 367.5 9.5" fill="none" stroke="${a.col}" stroke-width="1.5" stroke-linecap="round"/>
+              </g>
+            </svg>
+          `;
+        return `
+          <div class="wf-card" style="--wf-accent: ${a.col}; --wf-tint: ${a.tint};">
+            <div class="wf-card-ring ${cls}" aria-hidden="true"></div>
+            <div>
+              <div class="wf-card-top">
+                <span class="wf-step-title">
+                  <span class="wf-step-dot" aria-hidden="true"></span>
+                  ${esc(st.num)} — ${esc(st.title)}
+                </span>
+                <span class="wf-pulse-badge" aria-hidden="true">
+                  <span class="wf-pulse-halo ${cls}"></span>
+                  <span class="wf-pulse-core"></span>
+                </span>
+              </div>
+              <p class="wf-desc" style="margin-top: 12px;">"${esc(st.desc)}"</p>
+            </div>
+            <div class="wf-footer">
+              ${footer}
+            </div>
+          </div>
+        `;
+      }).join("");
 
       const colorAccents = {
         green: { dot: "var(--accent-green-bright)", orb: "orb-emerald", tag: "Java · Security" },
@@ -1690,11 +1977,18 @@
               </div>
             </article>
 
-            <!-- How I Work -->
+            <!-- My Workflow -->
             <article class="card">
-              <p class="workflow-lead">${esc(cfg.howIWork.text)}:</p>
-              <div class="tools-row">
-                ${toolsHtml}
+              ${cubicLayer("wf-mesh", "wf-cubic-layer")}
+              <p class="kicker" style="margin-bottom: 16px;">
+                <span class="kicker-accent" style="background: var(--accent-green-bright)"></span>
+                My Workflow
+              </p>
+              <div class="wf-pipeline-box">
+                ${wfPipelineSvg}
+              </div>
+              <div class="workflow-grid">
+                ${wfCardsHtml}
               </div>
             </article>
 

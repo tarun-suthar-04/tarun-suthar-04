@@ -17,10 +17,36 @@
   },
   "learning": {"title": "Currently learning", "chips": ["Django", "API", "Building projects"]},
   "stack": ["Java", "Python", "Android", "MySQL", "SQLite", "Firebase", "Tkinter", "Django (basics)"],
-  "howIWork": {
-    "text": "I'm an AI-assisted developer. Once I have an idea, I use AI to design, prototype, and build it, with",
-    "tools": ["Claude", "Codex", "ChatGPT", "Antigravity"]
-  },
+  "workflow": [
+    {
+      "num": "01",
+      "title": "IDEATE",
+      "desc": "Discuss ideas, explore possibilities, understand requirements, and define the intended outcome.",
+      "tools": ["ChatGPT", "Claude"],
+      "color": "amber"
+    },
+    {
+      "num": "02",
+      "title": "PLAN",
+      "desc": "Research solutions, break down requirements, compare approaches, and finalize the technology stack.",
+      "tools": ["ChatGPT", "Claude"],
+      "color": "cobalt"
+    },
+    {
+      "num": "03",
+      "title": "BUILD",
+      "desc": "Create initial prototypes, generate implementations, and develop project features with AI coding assistance.",
+      "tools": ["Codex", "Google Antigravity"],
+      "color": "green"
+    },
+    {
+      "num": "04",
+      "title": "REFINE",
+      "desc": "Test outputs, identify problems, improve functionality, and iterate until the result meets the requirements.",
+      "tools": [],
+      "color": "violet"
+    }
+  ],
   "projects": [
     {"name": "Pixault", "slug": "pixault", "desc": "Java desktop vault with AES-256 encryption and image steganography.", "tag": "Desktop app", "color": "green", "repo": ""},
     {"name": "Order-Manager", "slug": "order-manager", "desc": "Android retail order app with offline-first SQLite and Firebase sync.", "tag": "Android app", "color": "red", "repo": ""},
