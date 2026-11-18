@@ -4,16 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tarun Suthar · Developer Profile Preview</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    @font-face { font-family: 'TeX Gyre Adventor'; font-style: normal; font-weight: 400 500; font-display: swap; src: url('fonts/texgyreadventor-regular.otf') format('opentype'); }
+    @font-face { font-family: 'TeX Gyre Adventor'; font-style: italic; font-weight: 400 500; font-display: swap; src: url('fonts/texgyreadventor-italic.otf') format('opentype'); }
+    @font-face { font-family: 'TeX Gyre Adventor'; font-style: normal; font-weight: 600 900; font-display: swap; src: url('fonts/texgyreadventor-bold.otf') format('opentype'); }
+    @font-face { font-family: 'TeX Gyre Adventor'; font-style: italic; font-weight: 600 900; font-display: swap; src: url('fonts/texgyreadventor-bolditalic.otf') format('opentype'); }
+    @font-face { font-family: 'Instrument Serif'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/serif-400.woff') format('woff'); }
+    @font-face { font-family: 'Instrument Serif'; font-style: italic; font-weight: 400 700; font-display: swap; src: url('fonts/serif-italic.woff') format('woff'); }
+    @font-face { font-family: 'Geist Mono'; font-style: normal; font-weight: 400 700; font-display: swap; src: url('fonts/geistmono-400.woff') format('woff'); }
+
     *, *::before, *::after { box-sizing: border-box; }
 
     :root {
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --font-serif: 'Cormorant Garamond', Georgia, serif;
-      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --font-sans: 'TeX Gyre Adventor', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+      --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
       --page-bg: #f4f5f7;
       --nav-bg: rgba(15, 18, 24, 0.88);
@@ -28,6 +33,7 @@
     body {
       margin: 0;
       font-family: var(--font-sans);
+      letter-spacing: -0.028em;
       background: var(--page-bg);
       color: #0f172a;
       padding-top: 84px;
@@ -143,7 +149,7 @@
     .brand-wordmark {
       font-weight: 700;
       font-size: 15px;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.04em;
       color: #f8fafc;
       text-decoration: none;
       white-space: nowrap;
@@ -161,6 +167,7 @@
       text-decoration: none;
       font-size: 13px;
       font-weight: 500;
+      letter-spacing: -0.025em;
       white-space: nowrap;
       flex-shrink: 0;
       transition: color 160ms var(--ease-out);
@@ -198,6 +205,7 @@
       font-family: var(--font-sans);
       font-size: 12.5px;
       font-weight: 600;
+      letter-spacing: -0.025em;
       padding: 7px 13px;
       border-radius: 8px;
       cursor: pointer;
@@ -307,8 +315,8 @@
     .serif-italic {
       font-family: var(--font-serif);
       font-style: italic;
-      font-weight: 600;
-      letter-spacing: -0.02em;
+      font-weight: 400;
+      letter-spacing: -0.01em;
     }
 
     .tabular {
@@ -377,9 +385,9 @@
     .hero-card {
       padding: 36px;
       display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(240px, 0.85fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.9fr);
       gap: 32px;
-      align-items: stretch;
+      align-items: center;
     }
 
     .hero-cubic-zone {
@@ -406,7 +414,7 @@
       font-size: clamp(2.6rem, 5.4vw, 4.3rem);
       font-weight: 800;
       line-height: 0.96;
-      letter-spacing: -0.045em;
+      letter-spacing: -0.06em;
       color: var(--text-primary);
       text-wrap: balance;
     }
@@ -457,13 +465,14 @@
       font-size: 15px;
       font-weight: 700;
       color: var(--text-primary);
-      letter-spacing: -0.01em;
+      letter-spacing: -0.03em;
     }
 
     .hero-tagline {
       margin: 0;
       font-size: 16.5px;
-      line-height: 1.55;
+      line-height: 1.5;
+      letter-spacing: -0.028em;
       color: var(--text-secondary);
       max-width: 44ch;
     }
@@ -515,20 +524,21 @@
     .hero-media-frame {
       position: relative;
       border-radius: 20px;
-      padding: 14px;
+      aspect-ratio: 280 / 239;
+      width: 100%;
+      padding: 3.414% 4%;
       background: var(--hero-art-bg);
       border: 1px solid var(--border-strong);
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      min-height: 290px;
+      align-self: center;
     }
 
     .hero-media-frame img {
       width: 100%;
       height: 100%;
-      max-height: 310px;
       object-fit: contain;
       border-radius: 10px;
       display: block;
@@ -552,7 +562,7 @@
       margin: 0;
       font-size: clamp(1.75rem, 3vw, 2.35rem);
       font-weight: 800;
-      letter-spacing: -0.035em;
+      letter-spacing: -0.05em;
       line-height: 1.05;
       color: var(--text-primary);
     }
@@ -646,7 +656,7 @@
       font-size: clamp(3.2rem, 6vw, 4.75rem);
       font-weight: 800;
       line-height: 0.92;
-      letter-spacing: -0.05em;
+      letter-spacing: -0.06em;
       color: var(--text-primary);
       margin: 0;
     }
@@ -654,6 +664,7 @@
     .big-stat-label {
       font-size: 16px;
       font-weight: 600;
+      letter-spacing: -0.028em;
       color: var(--text-secondary);
       margin: 8px 0 0;
     }
@@ -726,7 +737,7 @@
     .kpi-value {
       font-size: 36px;
       font-weight: 800;
-      letter-spacing: -0.04em;
+      letter-spacing: -0.055em;
       line-height: 1;
       color: var(--text-primary);
     }
@@ -734,6 +745,7 @@
     .kpi-unit {
       font-size: 16px;
       font-weight: 600;
+      letter-spacing: -0.025em;
       color: var(--text-secondary);
       margin-left: 6px;
     }
@@ -805,7 +817,7 @@
       margin: 0 0 10px;
       font-size: clamp(2rem, 3.2vw, 2.55rem);
       font-weight: 800;
-      letter-spacing: -0.04em;
+      letter-spacing: -0.055em;
       line-height: 1;
       color: var(--text-primary);
     }
@@ -815,13 +827,14 @@
       font-weight: 600;
       color: var(--text-secondary);
       margin-left: 6px;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.025em;
     }
 
     .pillar-desc {
       margin: 0;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.48;
+      letter-spacing: -0.025em;
       color: var(--text-secondary);
     }
 
@@ -862,50 +875,23 @@
     }
 
     /* ------------------------------------------------------------------
-       05. Education & Currently Learning (2-Column Equal-Height Bento)
+       05. Tech Stack & Currently Learning (Combined Architectural Card)
     ------------------------------------------------------------------ */
-    .grid-2 {
+    .learn-strip {
+      margin-top: 22px;
+      padding-top: 22px;
+      border-top: 1px solid var(--border-hairline);
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 18px;
-      align-items: stretch;
-    }
-
-    .edu-card, .learn-card {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      min-height: 230px;
-    }
-
-    .edu-degree {
-      margin: 0 0 18px;
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: -0.025em;
-      color: var(--text-primary);
-    }
-
-    .edu-score {
-      font-size: 56px;
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      line-height: 0.95;
-      color: var(--text-primary);
-    }
-
-    .edu-score-label {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--accent-green);
-      margin-left: 8px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr);
+      gap: 20px;
+      align-items: center;
     }
 
     .learn-title {
-      margin: 0 0 18px;
-      font-size: 24px;
+      margin: 0;
+      font-size: 21px;
       font-weight: 700;
-      letter-spacing: -0.025em;
+      letter-spacing: -0.04em;
       line-height: 1.2;
       color: var(--text-primary);
     }
@@ -923,19 +909,19 @@
       border: 1px solid var(--border-hairline);
       backdrop-filter: blur(8px);
       font-family: var(--font-mono);
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 600;
       text-align: center;
       color: var(--text-primary);
     }
 
     .learn-cubic-layer {
-      mask-image: radial-gradient(circle at 90% 90%, #000 10%, transparent 72%);
-      -webkit-mask-image: radial-gradient(circle at 90% 90%, #000 10%, transparent 72%);
+      mask-image: radial-gradient(ellipse 68% 72% at 92% 92%, #000 10%, transparent 72%);
+      -webkit-mask-image: radial-gradient(ellipse 68% 72% at 92% 92%, #000 10%, transparent 72%);
     }
 
     .learn-mesh {
-      background: radial-gradient(circle at 88% 88%, rgba(251, 191, 36, 0.45), transparent 60%);
+      background: radial-gradient(circle at 92% 90%, rgba(251, 191, 36, 0.42), transparent 58%);
     }
 
     /* ------------------------------------------------------------------
@@ -954,8 +940,8 @@
       border: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+      justify-content: center;
+      text-align: center;
       transition: transform 160ms var(--ease-out), border-color 160ms var(--ease-out);
     }
 
@@ -968,21 +954,15 @@
       font-size: 15px;
       font-weight: 600;
       color: var(--text-primary);
-      letter-spacing: -0.01em;
-    }
-
-    .stack-idx {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--text-muted);
+      letter-spacing: -0.03em;
     }
 
     .workflow-lead {
       margin: 0 0 22px;
       font-size: clamp(1.2rem, 2.2vw, 1.55rem);
       font-weight: 600;
-      line-height: 1.4;
-      letter-spacing: -0.02em;
+      line-height: 1.38;
+      letter-spacing: -0.035em;
       color: var(--text-primary);
       max-width: 56ch;
     }
@@ -1000,6 +980,7 @@
       border: 1px solid rgba(245, 183, 0, 0.35);
       font-size: 15px;
       font-weight: 700;
+      letter-spacing: -0.03em;
       color: var(--text-primary);
       display: flex;
       align-items: center;
@@ -1045,7 +1026,7 @@
       margin: 0 0 10px;
       font-size: 20px;
       font-weight: 700;
-      letter-spacing: -0.025em;
+      letter-spacing: -0.04em;
       color: var(--text-primary);
       line-height: 1.2;
       word-break: break-word;
@@ -1054,7 +1035,8 @@
     .project-desc {
       margin: 0;
       font-size: 14px;
-      line-height: 1.55;
+      line-height: 1.5;
+      letter-spacing: -0.025em;
       color: var(--text-secondary);
     }
 
@@ -1072,45 +1054,18 @@
     }
 
     /* ------------------------------------------------------------------
-       08. Contact Section (Inspired by Ref 4 & 5)
+       08. Contact Section (Themed Cubic Glass Cards)
     ------------------------------------------------------------------ */
-    .contact-banner {
-      padding: 34px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-
-    .contact-cubic-layer {
-      mask-image: radial-gradient(ellipse 75% 95% at 88% 55%, #000 10%, rgba(0,0,0,0.4) 48%, transparent 78%);
-      -webkit-mask-image: radial-gradient(ellipse 75% 95% at 88% 55%, #000 10%, rgba(0,0,0,0.4) 48%, transparent 78%);
-    }
-
-    .contact-mesh {
-      background:
-        radial-gradient(circle at 82% 45%, rgba(139, 92, 246, 0.40), transparent 46%),
-        radial-gradient(circle at 65% 85%, rgba(37, 99, 235, 0.34), transparent 48%),
-        radial-gradient(circle at 95% 80%, rgba(251, 191, 36, 0.28), transparent 42%);
-    }
-
-    .contact-headline {
-      margin: 0;
-      font-size: clamp(2.2rem, 4.4vw, 3.3rem);
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      line-height: 1;
-      color: var(--text-primary);
-    }
 
     .contact-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
 
     .contact-tile {
+      position: relative;
+      overflow: hidden;
       padding: 18px 16px;
       border-radius: 16px;
       background: var(--bg-card);
@@ -1120,15 +1075,50 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      min-height: 92px;
+      min-height: 98px;
       transition: transform 180ms var(--ease-out), border-color 180ms var(--ease-out);
     }
 
-    .contact-tile.active-primary {
-      background: linear-gradient(135deg, #ffd43b 0%, #f5b700 100%);
-      border-color: rgba(15, 23, 42, 0.16);
-      color: #0f172a;
+    .contact-tile > *:not(.cubic-layer) {
+      position: relative;
+      z-index: 1;
     }
+
+    .contact-tile-cubic {
+      mask-image: radial-gradient(ellipse 96% 96% at 84% 86%, #000 18%, rgba(0,0,0,0.48) 58%, transparent 92%);
+      -webkit-mask-image: radial-gradient(ellipse 96% 96% at 84% 86%, #000 18%, rgba(0,0,0,0.48) 58%, transparent 92%);
+    }
+
+    .contact-tile-cubic .cubic-tiles {
+      background-size: 24px 24px;
+    }
+
+    .contact-tile.pending .contact-tile-cubic {
+      opacity: 0.72;
+    }
+
+    .contact-mesh-linkedin {
+      background: radial-gradient(circle at 84% 86%, rgba(147, 197, 253, 0.92) 0%, rgba(10, 102, 194, 0.72) 42%, rgba(29, 78, 216, 0.32) 78%, transparent 100%);
+    }
+    .contact-mesh-fiverr {
+      background: radial-gradient(circle at 84% 86%, rgba(167, 243, 208, 0.92) 0%, rgba(29, 191, 115, 0.72) 42%, rgba(5, 150, 105, 0.32) 78%, transparent 100%);
+    }
+    .contact-mesh-hackerrank {
+      background: radial-gradient(circle at 84% 86%, rgba(134, 239, 172, 0.92) 0%, rgba(0, 234, 100, 0.68) 42%, rgba(22, 163, 74, 0.32) 78%, transparent 100%);
+    }
+    .contact-mesh-leetcode {
+      background: radial-gradient(circle at 84% 86%, rgba(254, 215, 170, 0.92) 0%, rgba(255, 161, 22, 0.72) 42%, rgba(234, 88, 12, 0.32) 78%, transparent 100%);
+    }
+
+    .contact-theme-linkedin   { border-color: rgba(10, 102, 194, 0.34); }
+    .contact-theme-fiverr     { border-color: rgba(29, 191, 115, 0.34); }
+    .contact-theme-hackerrank { border-color: rgba(22, 163, 74, 0.34); }
+    .contact-theme-leetcode   { border-color: rgba(234, 88, 12, 0.34); }
+
+    .profile-shell[data-theme="dark"] .contact-theme-linkedin   { border-color: rgba(56, 189, 248, 0.34); }
+    .profile-shell[data-theme="dark"] .contact-theme-fiverr     { border-color: rgba(52, 211, 153, 0.34); }
+    .profile-shell[data-theme="dark"] .contact-theme-hackerrank { border-color: rgba(0, 234, 100, 0.34); }
+    .profile-shell[data-theme="dark"] .contact-theme-leetcode   { border-color: rgba(255, 161, 22, 0.34); }
 
     .contact-tile.active-link:hover,
     .contact-tile.active-primary:hover {
@@ -1137,8 +1127,12 @@
     }
 
     .contact-tile.pending {
-      opacity: 0.72;
       cursor: default;
+    }
+
+    .contact-tile.pending .contact-tile-top,
+    .contact-tile.pending .contact-tile-sub {
+      opacity: 0.78;
     }
 
     .contact-tile-top {
@@ -1147,22 +1141,32 @@
       justify-content: space-between;
       font-size: 14px;
       font-weight: 700;
-      color: inherit;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
     }
 
-    .contact-tile:not(.active-primary) .contact-tile-top {
-      color: var(--text-primary);
+    .contact-tile-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .contact-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2.5px;
+      flex-shrink: 0;
     }
 
     .contact-tile-sub {
       font-family: var(--font-mono);
       font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 12px;
+      color: var(--text-secondary);
+      margin-top: 14px;
     }
 
-    .contact-tile.active-primary .contact-tile-sub {
-      color: rgba(15, 23, 42, 0.72);
+    .contact-tile.pending .contact-tile-sub {
+      color: var(--text-muted);
     }
 
     /* Tooltip for heatmap */
@@ -1198,7 +1202,7 @@
       .hero-card,
       .stats-grid,
       .grid-3,
-      .grid-2 {
+      .learn-strip {
         grid-template-columns: 1fr;
       }
       .stats-right {
@@ -1282,8 +1286,8 @@
       links: {
         portfolio: "https://portfoliotv.vercel.app",
         linkedin: "https://www.linkedin.com/in/tarun-suthar-307838266",
-        email: "",
-        resume: "",
+        fiverr: "https://www.fiverr.com/sellers/tarun_suthar/edit",
+        hackerrank: "https://www.hackerrank.com/profile/tarun_suthar",
         leetcode: ""
       },
       tiles: {
@@ -1291,8 +1295,7 @@
         solve: { big: "120+", unit: "problems", text: "LeetCode DSA problems solved and 45 Days Grind." },
         create: { big: "Visuals", text: "AI visual design and digital storytelling." }
       },
-      education: { degree: "M.Sc. Computer Science", score: "8.58", scoreLabel: "CGPA" },
-      learning: { title: "Django, API & building projects", chips: ["Django", "API", "Building projects"] },
+      learning: { title: "Currently learning", chips: ["Django", "API", "Building projects"] },
       stack: ["Java", "Python", "Android", "MySQL", "SQLite", "Firebase", "Tkinter", "Django (basics)"],
       howIWork: {
         text: "I'm an AI-assisted developer. Once I have an idea, I use AI to design, prototype, and build it, with",
@@ -1432,10 +1435,9 @@
         `;
       }).join("");
 
-      const stackHtml = cfg.stack.map((item, i) => `
+      const stackHtml = cfg.stack.map((item) => `
         <div class="stack-cell">
           <span class="stack-name">${esc(item)}</span>
-          <span class="stack-idx tabular">${String(i + 1).padStart(2, "0")}</span>
         </div>
       `).join("");
 
@@ -1477,20 +1479,30 @@
         `;
       }).join("");
 
+      const isDark = theme === "dark";
+      const contactDots = {
+        linkedin: isDark ? "#38BDF8" : "#0A66C2",
+        fiverr: isDark ? "#34D399" : "#15803D",
+        hackerrank: isDark ? "#00EA64" : "#16A34A",
+        leetcode: isDark ? "#FFA116" : "#EA580C"
+      };
+
       const contactItems = [
-        { key: "portfolio", name: "Portfolio", href: cfg.links.portfolio, primary: true },
         { key: "linkedin", name: "LinkedIn", href: cfg.links.linkedin, primary: false },
-        { key: "email", name: "Email", href: cfg.links.email ? `mailto:${cfg.links.email}` : "", primary: false },
-        { key: "resume", name: "Resume", href: cfg.links.resume, primary: false },
+        { key: "fiverr", name: "Fiverr", href: cfg.links.fiverr, primary: false },
+        { key: "hackerrank", name: "HackerRank", href: cfg.links.hackerrank, primary: false },
         { key: "leetcode", name: "LeetCode", href: cfg.links.leetcode, primary: false }
       ];
 
       const contactsHtml = contactItems.map(item => {
+        const dot = contactDots[item.key] || "#F59E0B";
+        const cubic = cubicLayer(`contact-mesh-${item.key}`, "contact-tile-cubic");
         if (item.href) {
           return `
-            <a href="${esc(item.href)}" target="_blank" rel="noopener noreferrer" class="contact-tile ${item.primary ? "active-primary" : "active-link"}">
+            <a href="${esc(item.href)}" target="_blank" rel="noopener noreferrer" class="contact-tile contact-theme-${item.key} ${item.primary ? "active-primary" : "active-link"}">
+              ${cubic}
               <div class="contact-tile-top">
-                <span>${esc(item.name)}</span>
+                <span class="contact-tile-name"><span class="contact-dot" style="background: ${dot}"></span>${esc(item.name)}</span>
                 <span aria-hidden="true">↗</span>
               </div>
               <div class="contact-tile-sub">${item.primary ? "Open live site" : "Connect"}</div>
@@ -1498,9 +1510,10 @@
           `;
         }
         return `
-          <div class="contact-tile pending" aria-disabled="true">
+          <div class="contact-tile contact-theme-${item.key} pending" aria-disabled="true">
+            ${cubic}
             <div class="contact-tile-top">
-              <span>${esc(item.name)}</span>
+              <span class="contact-tile-name"><span class="contact-dot" style="background: ${dot}"></span>${esc(item.name)}</span>
               <span aria-hidden="true">·</span>
             </div>
             <div class="contact-tile-sub">Coming soon</div>
@@ -1527,10 +1540,6 @@
 
               <div class="hero-copy">
                 <div>
-                  <p class="kicker">
-                    <span class="kicker-accent" style="background: var(--accent-red)"></span>
-                    01. Profile · Open to opportunities
-                  </p>
                   <h1 class="hero-title">
                     ${esc(cfg.name[0])}<br>
                     <span class="hero-surname-wrap">${esc(cfg.name[1])}</span>
@@ -1559,14 +1568,10 @@
               </div>
             </article>
 
-            <!-- 02. Activity Heatmap -->
+            <!-- Activity Heatmap -->
             <article id="section-activity" class="card">
               <div class="section-head-row">
                 <div>
-                  <p class="kicker">
-                    <span class="kicker-accent" style="background: var(--accent-green-bright)"></span>
-                    02. Activity · Refreshed daily
-                  </p>
                   <h2 class="section-title">
                     Building <span class="serif-italic accent-green-text">in public</span>
                   </h2>
@@ -1593,15 +1598,11 @@
               </div>
             </article>
 
-            <!-- 03. Contributions Analytics -->
+            <!-- Contributions Analytics -->
             <article class="card">
               <div class="stats-grid">
                 <div class="stats-left">
                   <div>
-                    <p class="kicker">
-                      <span class="kicker-accent" style="background: var(--accent-red)"></span>
-                      Contributions · Last 12 months
-                    </p>
                     <p class="big-stat-number tabular">${S.total}</p>
                     <p class="big-stat-label">contributions across repositories</p>
                   </div>
@@ -1628,7 +1629,7 @@
               </div>
             </article>
 
-            <!-- 04. Three Showcase Pillars (Ref 3 inspired cubic orb cards) -->
+            <!-- Three Showcase Pillars (Ref 3 inspired cubic orb cards) -->
             <div id="section-work" class="grid-3">
               <a href="${esc(reposUrl)}" target="_blank" rel="noopener noreferrer" class="card card-interactive pillar-card">
                 ${cubicLayer("orb-emerald", "orb-cubic-layer")}
@@ -1668,71 +1669,41 @@
               </a>
             </div>
 
-            <!-- 05. Education & Currently Learning -->
-            <div class="grid-2">
-              <article class="card edu-card">
-                <div>
-                  <p class="kicker">
-                    <span class="kicker-accent" style="background: var(--accent-green-bright)"></span>
-                    Education
-                  </p>
-                  <h3 class="edu-degree">${esc(cfg.education.degree)}</h3>
-                </div>
-                <div>
-                  <span class="edu-score tabular">${esc(cfg.education.score)}</span>
-                  <span class="edu-score-label">${esc(cfg.education.scoreLabel)}</span>
-                </div>
-              </article>
-
-              <article class="card learn-card">
-                ${cubicLayer("learn-mesh", "learn-cubic-layer")}
-                <div>
-                  <p class="kicker">
-                    <span class="kicker-accent" style="background: var(--accent-amber)"></span>
-                    Currently learning
-                  </p>
-                  <h3 class="learn-title">${esc(cfg.learning.title)}</h3>
-                </div>
-                <div class="learn-grid">
-                  ${learningChipsHtml}
-                </div>
-              </article>
-            </div>
-
-            <!-- 06. Tech Stack -->
+            <!-- Tech I Use & Currently Learning -->
             <article id="section-stack" class="card">
+              ${cubicLayer("learn-mesh", "learn-cubic-layer")}
               <div class="section-head-row" style="margin-bottom: 18px;">
                 <div>
-                  <p class="kicker">
-                    <span class="kicker-accent" style="background: var(--accent-red)"></span>
-                    Tech stack
-                  </p>
-                  <h2 class="section-title">What I use</h2>
+                  <h2 class="section-title">Tech I use</h2>
                 </div>
               </div>
               <div class="stack-matrix">
                 ${stackHtml}
               </div>
+              <div class="learn-strip">
+                <div>
+                  <h3 class="learn-title">${esc(cfg.learning.title)}</h3>
+                </div>
+                <div class="learn-grid">
+                  ${learningChipsHtml}
+                </div>
+              </div>
             </article>
 
-            <!-- 07. How I Work -->
+            <!-- How I Work -->
             <article class="card">
-              <p class="kicker">
-                <span class="kicker-accent" style="background: var(--accent-green-bright)"></span>
-                How I work
-              </p>
               <p class="workflow-lead">${esc(cfg.howIWork.text)}:</p>
               <div class="tools-row">
                 ${toolsHtml}
               </div>
             </article>
 
-            <!-- 08. What I'm Coding -->
+            <!-- What i Built -->
             <section id="section-projects">
               <div class="section-head-row" style="padding: 6px 4px 0; margin-bottom: 14px;">
                 <p class="kicker" style="margin: 0;">
                   <span class="kicker-accent" style="background: var(--accent-red)"></span>
-                  What I'm coding
+                  What i Built
                 </p>
                 <a href="${esc(reposUrl)}" target="_blank" rel="noopener noreferrer" class="link-subtle">
                   All Repositories ↗
@@ -1743,24 +1714,8 @@
               </div>
             </section>
 
-            <!-- 09. Contact -->
+            <!-- Contact -->
             <section id="section-contact" class="stack-col" style="gap: 12px;">
-              <article class="card contact-banner">
-                ${cubicLayer("contact-mesh", "contact-cubic-layer")}
-                <div>
-                  <p class="kicker">
-                    <span class="kicker-accent" style="background: var(--accent-red)"></span>
-                    Contact
-                  </p>
-                  <h2 class="contact-headline">
-                    Let's <span class="serif-italic">talk.</span>
-                  </h2>
-                </div>
-                <a href="${esc(cfg.links.portfolio)}" target="_blank" rel="noopener noreferrer" class="btn-primary">
-                  Open Portfolio <span aria-hidden="true">↗</span>
-                </a>
-              </article>
-
               <div class="contact-grid">
                 ${contactsHtml}
               </div>

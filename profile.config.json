@@ -6,8 +6,8 @@
   "links": {
     "portfolio": "https://portfoliotv.vercel.app",
     "linkedin": "https://www.linkedin.com/in/tarun-suthar-307838266",
-    "email": "",
-    "resume": "",
+    "fiverr": "https://www.fiverr.com/sellers/tarun_suthar/edit",
+    "hackerrank": "https://www.hackerrank.com/profile/tarun_suthar",
     "leetcode": ""
   },
   "tiles": {
@@ -15,8 +15,7 @@
     "solve": {"big": "120+", "unit": "problems", "text": "LeetCode DSA problems solved and 45 Days Grind."},
     "create": {"big": "Visuals", "text": "AI visual design and digital storytelling."}
   },
-  "education": {"degree": "M.Sc. Computer Science", "score": "8.58", "scoreLabel": "CGPA"},
-  "learning": {"title": "Django, API & building projects", "chips": ["Django", "API", "Building projects"]},
+  "learning": {"title": "Currently learning", "chips": ["Django", "API", "Building projects"]},
   "stack": ["Java", "Python", "Android", "MySQL", "SQLite", "Firebase", "Tkinter", "Django (basics)"],
   "howIWork": {
     "text": "I'm an AI-assisted developer. Once I have an idea, I use AI to design, prototype, and build it, with",

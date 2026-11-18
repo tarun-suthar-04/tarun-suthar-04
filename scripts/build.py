@@ -11,9 +11,11 @@ import datetime as dt
 import json
 import os
 import re
+import struct
 import sys
 import textwrap
 import urllib.request
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -21,9 +23,73 @@ CFG = json.loads((ROOT / "profile.config.json").read_text(encoding="utf-8"))
 USER = CFG["username"]
 PROFILE_URL = f"https://github.com/{USER}"
 
-HEAD = "'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
-SERIF = "Georgia,'Cormorant Garamond','Times New Roman',serif"
-MONO = "'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+HEAD = "'TeX Gyre Adventor',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
+SERIF = "'Instrument Serif',Georgia,'Times New Roman',serif"
+MONO = "'Geist Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+
+
+def _sfnt_to_woff(sfnt_bytes):
+    sfnt_ver, num_tables = struct.unpack(">4sH", sfnt_bytes[:6])
+    entries = []
+    total_sfnt = 12 + 16 * num_tables
+    for i in range(num_tables):
+        off = 12 + i * 16
+        tag, csum, offset, length = struct.unpack(">4sIII", sfnt_bytes[off : off + 16])
+        raw = sfnt_bytes[offset : offset + length]
+        comp = zlib.compress(raw, 9)
+        use = comp if len(comp) < len(raw) else raw
+        entries.append((tag, use, len(use), length, csum))
+        total_sfnt += (length + 3) & ~3
+    out_chunks = []
+    dir_entries = []
+    cur = 44 + 20 * num_tables
+    for tag, use, comp_len, orig_len, csum in entries:
+        pad = (4 - (comp_len % 4)) % 4
+        dir_entries.append(struct.pack(">4sIIII", tag, cur, comp_len, orig_len, csum))
+        out_chunks.append(use + b"\x00" * pad)
+        cur += comp_len + pad
+    header = struct.pack(
+        ">4s4sIHHIHHIIIII",
+        b"wOFF", sfnt_ver, cur, num_tables, 0, total_sfnt, 1, 0, 0, 0, 0, 0, 0,
+    )
+    return header + b"".join(dir_entries) + b"".join(out_chunks)
+
+
+_FONT_CACHE = {}
+
+
+def _load_font_b64(filename):
+    if filename not in _FONT_CACHE:
+        p = ROOT / "fonts" / filename
+        raw = p.read_bytes()
+        if p.suffix.lower() in (".ttf", ".otf"):
+            raw = _sfnt_to_woff(raw)
+        _FONT_CACHE[filename] = base64.b64encode(raw).decode()
+    return _FONT_CACHE[filename]
+
+
+_FONT_SPECS = {
+    "a400": ("TeX Gyre Adventor", "normal", "400 500", "texgyreadventor-regular.otf"),
+    "a400i": ("TeX Gyre Adventor", "italic", "400 500", "texgyreadventor-italic.otf"),
+    "a700": ("TeX Gyre Adventor", "normal", "600 900", "texgyreadventor-bold.otf"),
+    "a700i": ("TeX Gyre Adventor", "italic", "600 900", "texgyreadventor-bolditalic.otf"),
+    "s400": ("Instrument Serif", "normal", "400 700", "serif-400.woff"),
+    "s400i": ("Instrument Serif", "italic", "400 700", "serif-italic.woff"),
+    "m400": ("Geist Mono", "normal", "400 700", "geistmono-400.woff"),
+}
+
+
+def font_style(*keys):
+    rules = []
+    for k in keys:
+        fam, st, wt, fn = _FONT_SPECS[k]
+        if (ROOT / "fonts" / fn).exists():
+            b64 = _load_font_b64(fn)
+            rules.append(
+                f"@font-face{{font-family:'{fam}';font-style:{st};font-weight:{wt};"
+                f"src:url(data:font/woff;base64,{b64}) format('woff');}}"
+            )
+    return f"<style>{''.join(rules)}</style>" if rules else ""
 
 LIGHT = dict(
     card="#FFFFFF",
@@ -103,7 +169,9 @@ def est(s, size, k=0.56):
     return len(s) * size * k
 
 
-def T(x, y, s, size, fill, weight=400, fam=HEAD, ls=0, anchor="start", tl=None, style=None):
+def T(x, y, s, size, fill, weight=400, fam=HEAD, ls=None, anchor="start", tl=None, style=None):
+    if ls is None and fam == HEAD:
+        ls = round(-0.028 * size, 2)
     a = f'x="{x:.1f}" y="{y:.1f}" font-family="{fam}" font-size="{size}" font-weight="{weight}" fill="{fill}"'
     if style:
         a += f' font-style="{style}"'
@@ -116,7 +184,7 @@ def T(x, y, s, size, fill, weight=400, fam=HEAD, ls=0, anchor="start", tl=None, 
     return f"<text {a}>{esc(s)}</text>"
 
 
-def H_fit(x, y, s, size, fill, maxw=None, weight=800, anchor="start", fam=HEAD, ls=-1.2):
+def H_fit(x, y, s, size, fill, maxw=None, weight=800, anchor="start", fam=HEAD, ls=-2.0):
     w = est(s, size, 0.56)
     tl = maxw if (maxw and w > maxw) else None
     return T(x, y, s, size, fill, weight, fam, ls, anchor, tl=tl)
@@ -205,14 +273,14 @@ def cubic_pattern_defs(uid, t, size=36):
     )
 
 
-def cubic_orb_defs(uid, w, h, t, cx, cy, r, stops, mask_cx, mask_cy, mask_rx, mask_ry):
+def cubic_orb_defs(uid, w, h, t, cx, cy, r, stops, mask_cx, mask_cy, mask_rx, mask_ry, tile_size=36):
     stop_xml = "".join(
         f'<stop offset="{off}" stop-color="{col}" stop-opacity="{op}"/>'
         for off, col, op in stops
     )
     fade_r = max(float(mask_rx), float(mask_ry))
     return (
-        cubic_pattern_defs(uid, t)
+        cubic_pattern_defs(uid, t, size=tile_size)
         + f'<radialGradient id="mesh-{uid}" cx="{cx}" cy="{cy}" r="{r}">{stop_xml}</radialGradient>'
         + f'<radialGradient id="fade-{uid}" gradientUnits="userSpaceOnUse" cx="{mask_cx}" cy="{mask_cy}" r="{fade_r:g}">'
         + f'<stop offset="0%" stop-color="#FFFFFF" stop-opacity="1"/>'
@@ -342,12 +410,21 @@ def stats(end, days):
 
 
 # ------------------------------------------------------------------ cards
+def _media_dims(path):
+    b = path.read_bytes()
+    if path.suffix.lower() == ".gif" and len(b) >= 10:
+        return struct.unpack("<HH", b[6:10])
+    if path.suffix.lower() == ".png" and len(b) >= 24:
+        return struct.unpack(">II", b[16:24])
+    return (280, 239)
+
+
 def hero(t, dark):
-    w, h = 1000, 480
+    w, h = 1000, 458
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=40, rx=24)
 
-    # Vertical hairline editorial grid + cubic mesh gradient
-    defs += (
+    # Embedded fonts + Vertical hairline editorial grid + cubic mesh gradient
+    defs += font_style("a400", "a700", "m400") + (
         f'<pattern id="vlines" width="56" height="56" patternUnits="userSpaceOnUse">'
         f'<line x1="0" y1="0" x2="0" y2="56" stroke="{t["grid_line"]}" stroke-width="1"/>'
         f"</pattern>"
@@ -379,50 +456,56 @@ def hero(t, dark):
         f"</g></g>"
     )
 
-    # Kicker
-    b += kicker(px, 60, "01. Profile · Open to opportunities", t["muted"], t["red"], size=12)
-
     # Name
     n1, n2 = CFG["name"]
-    b += H_fit(px, 134, n1, 74, t["text"], maxw=460, weight=800, ls=-3.0)
-    pw = est(n2, 74, 0.56) + 34
-    b += f'<rect x="{px}" y="148" width="{pw:.1f}" height="82" rx="14" fill="url(#goldPill)"/>'
-    b += H_fit(px + 17, 214, n2, 74, INK, maxw=pw - 24, weight=800, ls=-2.8)
+    b += H_fit(px, 108, n1, 74, t["text"], maxw=460, weight=800, ls=-4.4)
+    pw = est(n2, 74, 0.49) + 38
+    b += f'<rect x="{px}" y="122" width="{pw:.1f}" height="82" rx="14" fill="url(#goldPill)"/>'
+    b += H_fit(px + 19, 188, n2, 74, INK, maxw=pw - 26, weight=800, ls=-4.2)
 
     # Floating tilted handle pill
     handle = f"@{USER}"
-    hw = est(handle, 13, 0.62) + 30
+    hw = est(handle, 13, 0.64) + 32
     b += (
-        f'<g transform="translate({px+2}, 248) rotate(-1.5)">'
+        f'<g transform="translate({px+2}, 222) rotate(-1.5)">'
         f'<rect x="0" y="0" width="{hw:.1f}" height="32" rx="16" fill="{t["pill"]}" stroke="{t["border_strong"]}" stroke-width="1"/>'
         + T(hw / 2, 20.5, handle, 13, t["cobalt"], 600, MONO, anchor="middle")
         + "</g>"
     )
 
     # Role + Tagline
-    b += T(px, 316, CFG["label"], 16, t["text"], 700, HEAD, ls=-0.2)
-    for i, ln in enumerate(wrap(CFG["tagline"], 44)[:2]):
-        b += T(px, 344 + i * 24, ln, 16, t["secondary"], 400, HEAD)
+    b += T(px, 290, CFG["label"], 16, t["text"], 700, HEAD, ls=-0.5)
+    for i, ln in enumerate(wrap(CFG["tagline"], 44)[:3]):
+        b += T(px, 318 + i * 23, ln, 15, t["secondary"], 400, HEAD, ls=-0.42)
 
     # Action visual controls
-    bw = 166
-    b += f'<rect x="{px}" y="396" width="{bw}" height="40" rx="12" fill="{t["btn_bg"]}"/>'
-    b += T(px + 18, 421, "View Portfolio", 13.5, t["btn_fg"], 600, HEAD)
-    b += arrow_ne(px + bw - 28, 410, 10, t["btn_fg"], sw=2)
-    b += T(px + bw + 20, 421, "Browse Repositories", 13.5, t["secondary"], 600, HEAD)
-    b += arrow_r(px + bw + 170, 410, 12, t["secondary"], sw=1.8)
+    bw = 172
+    b += f'<rect x="{px}" y="376" width="{bw}" height="40" rx="12" fill="{t["btn_bg"]}"/>'
+    b += T(px + 18, 401, "View Portfolio", 13.5, t["btn_fg"], 600, HEAD)
+    b += arrow_ne(px + bw - 28, 390, 10, t["btn_fg"], sw=2)
+    b += T(px + bw + 20, 401, "Browse Repositories", 13.5, t["secondary"], 600, HEAD)
+    b += arrow_r(px + bw + 170, 390, 12, t["secondary"], sw=1.8)
 
-    # Right media frame (always warm paper #F3F1E7 matching hero.gif)
-    mx, my, mw, mh = 610, 40, 340, 400
-    b += f'<rect x="{mx}" y="{my}" width="{mw}" height="{mh}" rx="20" fill="#F3F1E7" stroke="{t["border_strong"]}" stroke-width="1.5"/>'
+    # Right media frame: border & margins matched strictly to video aspect ratio (280:239)
     p_gif = ROOT / "assets" / "hero.gif"
     p_png = ROOT / "assets" / "hero.png"
     p = p_gif if p_gif.exists() else p_png
+    vid_w, vid_h = _media_dims(p) if p.exists() else (280, 239)
+    ratio = vid_w / vid_h
+    mw = 408.0
+    pad_x = 16.0
+    pad_y = pad_x / ratio
+    vw = mw - 2 * pad_x
+    vh = vw / ratio
+    mh = vh + 2 * pad_y
+    mx = pr - mw
+    my = (h - mh) / 2
+    b += f'<rect x="{mx:.1f}" y="{my:.1f}" width="{mw:.1f}" height="{mh:.1f}" rx="20" fill="#F3F1E7" stroke="{t["border_strong"]}" stroke-width="1.5"/>'
     if p.exists():
         mime = "image/gif" if p.suffix.lower() == ".gif" else "image/png"
         uri = base64.b64encode(p.read_bytes()).decode()
         b += (
-            f'<image x="{mx+16}" y="{my+16}" width="{mw-32}" height="{mh-32}" '
+            f'<image x="{mx+pad_x:.1f}" y="{my+pad_y:.1f}" width="{vw:.1f}" height="{vh:.1f}" '
             f'preserveAspectRatio="xMidYMid meet" href="data:{mime};base64,{uri}"/>'
         )
     b += br
@@ -430,20 +513,20 @@ def hero(t, dark):
 
 
 def heatmap(t, dark, end, days):
-    w, h = 1000, 318
+    w, h = 1000, 294
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=36, rx=24)
+    defs += font_style("a700", "s400i", "m400")
     b = bg
-    b += kicker(px, 56, "02. Activity · Refreshed daily", t["muted"], t["green_bright"], size=12)
     b += (
-        f'<text x="{px}" y="100" font-family="{HEAD}" font-size="38" font-weight="800" letter-spacing="-1.4" fill="{t["text"]}">'
-        f'Building <tspan font-family="{SERIF}" font-style="italic" font-weight="600" font-size="42" fill="{t["green"]}">in public</tspan></text>'
+        f'<text x="{px}" y="76" font-family="{HEAD}" font-size="38" font-weight="800" letter-spacing="-1.9" fill="{t["text"]}">'
+        f'Building <tspan font-family="{SERIF}" font-style="italic" font-weight="600" font-size="42" letter-spacing="-0.4" fill="{t["green"]}">in public</tspan></text>'
     )
 
     start = end - dt.timedelta(days=364)
     start -= dt.timedelta(days=(start.weekday() + 1) % 7)
     pitch, cs = 17.15, 13.6
     lvl = lambda c: 0 if c == 0 else 1 if c < 3 else 2 if c < 6 else 3 if c < 10 else 4
-    gy = 128
+    gy = 104
     active = sum(1 for i in range(365) if days.get((end - dt.timedelta(days=i)).isoformat(), 0) > 0)
 
     for i in range((end - start).days + 1):
@@ -458,7 +541,7 @@ def heatmap(t, dark, end, days):
         )
 
     # Footer
-    fy = 278
+    fy = 254
     b += T(px, fy, f"Last 12 months · {active} active days", 12, t["muted"], 500, MONO)
     lx = pr - 166
     b += T(lx, fy, "less", 12, t["muted"], 500, MONO)
@@ -473,9 +556,9 @@ def heatmap(t, dark, end, days):
 
 
 def stats_card(t, dark, S):
-    w, h = 1000, 420
+    w, h = 1000, 398
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=36, rx=24)
-    defs += (
+    defs += font_style("a700", "m400") + (
         f'<linearGradient id="barPeak" x1="0%" y1="0%" x2="0%" y2="100%">'
         f'<stop offset="0%" stop-color="#EF4444"/><stop offset="100%" stop-color="#B91C1C"/>'
         f"</linearGradient>"
@@ -484,15 +567,14 @@ def stats_card(t, dark, S):
         f"</linearGradient>"
     )
     b = bg
-    b += kicker(px, 56, "Contributions · Last 12 months", t["muted"], t["red"], size=12)
-    b += T(px, 134, str(S["total"]), 78, t["text"], 800, HEAD, ls=-3.5)
-    b += T(px, 166, "contributions across repositories", 16, t["secondary"], 600, HEAD)
+    b += T(px, 110, str(S["total"]), 78, t["text"], 800, HEAD, ls=-4.6)
+    b += T(px, 142, "contributions across repositories", 16, t["secondary"], 600, HEAD, ls=-0.45)
 
     # Monthly bars
     mt, names = S["mt"], S["names"]
     mx = max(mt) or 1
     top1 = sorted(range(12), key=lambda i: -mt[i])[0]
-    base, maxh, pitch, bw = 358, 136, 44.5, 34
+    base, maxh, pitch, bw = 338, 136, 44.5, 34
     for i, v in enumerate(mt):
         bh = max(7, v / mx * maxh)
         fill = t["gbar"]
@@ -504,7 +586,7 @@ def stats_card(t, dark, S):
         b += f'<path d="{round_top_bar(bx, base - bh, bw, bh, rt=6, rb=3)}" fill="{fill}"/>'
         if v >= mx * 0.25 and v > 0:
             b += T(bx + bw / 2, base - bh - 9, str(v), 12, t["secondary"], 600, MONO, anchor="middle")
-        b += T(bx + bw / 2, 382, names[i], 11.5, t["muted"], 500, MONO, anchor="middle")
+        b += T(bx + bw / 2, 362, names[i], 11.5, t["muted"], 500, MONO, anchor="middle")
 
     # Right KPI column
     div_x = 612
@@ -512,18 +594,22 @@ def stats_card(t, dark, S):
     rx = 644
 
     def kpi_block(y, num, unit, cap):
-        nw = est(num, 38, 0.58)
-        out = T(rx, y, num, 38, t["text"], 800, HEAD, ls=-1.5)
-        if unit:
-            out += T(rx + nw + 8, y, unit, 16, t["secondary"], 600, HEAD)
-        out += T(rx, y + 26, cap, 12.5, t["muted"], 500, MONO)
+        unit_span = (
+            f'<tspan dx="8" font-size="16" font-weight="600" letter-spacing="-0.4" fill="{t["secondary"]}">{esc(unit)}</tspan>'
+            if unit else ""
+        )
+        out = (
+            f'<text x="{rx:.1f}" y="{y:.1f}" font-family="{HEAD}" font-size="38" font-weight="800" '
+            f'letter-spacing="-2.1" fill="{t["text"]}">{esc(num)}{unit_span}</text>'
+        )
+        out += T(rx, y + 26, cap, 12.5, t["muted"], 400, MONO)
         return out
 
-    b += kpi_block(96, str(S["cur"]), "days", f'current streak · longest {S["longest"]} days')
-    b += f'<line x1="{rx}" y1="154" x2="{pr}" y2="154" stroke="{t["border"]}" stroke-width="1.2"/>'
-    b += kpi_block(216, str(S["active"]), "/ 365", "days with a commit")
-    b += f'<line x1="{rx}" y1="274" x2="{pr}" y2="274" stroke="{t["border"]}" stroke-width="1.2"/>'
-    b += kpi_block(336, str(S["busiest"]), "", "commits on the busiest day")
+    b += kpi_block(82, str(S["cur"]), "days", f'current streak · longest {S["longest"]} days')
+    b += f'<line x1="{rx}" y1="140" x2="{pr}" y2="140" stroke="{t["border"]}" stroke-width="1.2"/>'
+    b += kpi_block(200, str(S["active"]), "/ 365", "days with a commit")
+    b += f'<line x1="{rx}" y1="258" x2="{pr}" y2="258" stroke="{t["border"]}" stroke-width="1.2"/>'
+    b += kpi_block(318, str(S["busiest"]), "", "commits on the busiest day")
     b += br
     return svg(
         w,
@@ -544,34 +630,39 @@ def tile(kind, t, dark):
         "solve": [("0%", "#FDE047", "0.92"), ("34%", "#FB7185", "0.76"), ("70%", "#DC2626", "0.52"), ("100%", "#DC2626", "0")],
         "create": [("0%", "#FEF08A", "0.95"), ("40%", "#FBBF24", "0.80"), ("74%", "#EA580C", "0.54"), ("100%", "#EA580C", "0")],
     }[kind]
-    defs += cubic_orb_defs(kind, w, h, t, "50%", "96%", "62%", orb_stops, "166", "345", "185", "175")
+    defs += font_style("a400", "a700", "m400") + cubic_orb_defs(kind, w, h, t, "50%", "96%", "62%", orb_stops, "166", "345", "185", "175")
 
     b = bg
     b += cubic_orb_layer(kind, ix, iy, cw, ch, opacity=0.90 if not dark else 0.78)
 
     # Top row: uppercase mono label + rounded arrow badge
-    b += T(px, 56, kind.upper(), 12, t["muted"], 700, MONO, ls=1.6)
+    b += T(px, 56, kind.upper(), 12, t["muted"], 600, MONO, ls=1.6)
     b += f'<rect x="{pr-30}" y="36" width="30" height="30" rx="10" fill="{t["subtle"]}" stroke="{t["border"]}" stroke-width="1"/>'
     b += arrow_ne(pr - 19.5, 46.5, 9, t["text"], sw=1.8)
 
     # Metric + text
     if kind == "create":
-        b += H_fit(px, 114, c["big"], 38, t["text"], maxw=pr - px, weight=800, ls=-1.5)
+        b += H_fit(px, 114, c["big"], 38, t["text"], maxw=pr - px, weight=800, ls=-2.1)
         dy = 148
     else:
-        nw = est(c["big"], 38, 0.58)
-        b += T(px, 114, c["big"], 38, t["text"], 800, HEAD, ls=-1.5)
-        b += T(px + nw + 8, 114, c["unit"], 16, t["secondary"], 600, HEAD)
+        unit_span = (
+            f'<tspan dx="8" font-size="16" font-weight="600" letter-spacing="-0.4" fill="{t["secondary"]}">{esc(c["unit"])}</tspan>'
+            if c.get("unit") else ""
+        )
+        b += (
+            f'<text x="{px:.1f}" y="114.0" font-family="{HEAD}" font-size="38" font-weight="800" '
+            f'letter-spacing="-2.1" fill="{t["text"]}">{esc(c["big"])}{unit_span}</text>'
+        )
         dy = 148
 
-    for i, ln in enumerate(wrap(c["text"], 30)[:3]):
+    for i, ln in enumerate(wrap(c["text"], 27)[:3]):
         b += T(px, dy + i * 22, ln, 14, t["secondary"], 400, HEAD)
 
     if kind == "create":
         cy = 204
-        b += f'<rect x="{px}" y="{cy}" width="144" height="34" rx="10" fill="{t["pill"]}" stroke="{t["border_strong"]}" stroke-width="1"/>'
-        b += T(px + 14, cy + 21, "View Portfolio", 12, t["text"], 700, MONO)
-        b += arrow_ne(px + 122, cy + 12, 8.5, t["text"], sw=1.8)
+        b += f'<rect x="{px}" y="{cy}" width="150" height="34" rx="10" fill="{t["pill"]}" stroke="{t["border_strong"]}" stroke-width="1"/>'
+        b += T(px + 14, cy + 21, "View Portfolio", 12, t["text"], 600, MONO)
+        b += arrow_ne(px + 128, cy + 12, 8.5, t["text"], sw=1.8)
 
     b += br
     u = c.get("unit", "")
@@ -579,97 +670,74 @@ def tile(kind, t, dark):
     return svg(w, h, defs, b, title_str)
 
 
-def education(t, dark):
-    w, h = 500, 248
-    e = CFG["education"]
-    defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=32, ix=8, iy=8, rx=24)
-    b = bg
-    b += kicker(px, 54, "Education", t["muted"], t["green_bright"], size=12)
-    b += H_fit(px, 102, e["degree"], 25, t["text"], maxw=pr - px, weight=700, ls=-0.6)
-    sw = est(e["score"], 58, 0.58)
-    b += T(px, 198, e["score"], 58, t["text"], 800, HEAD, ls=-2.6)
-    b += T(px + sw + 10, 198, e["scoreLabel"], 18, t["green"], 700, HEAD)
-    b += br
-    return svg(w, h, defs, b, f'Education: {e["degree"]}, {e["score"]} {e["scoreLabel"]}.')
-
-
-def learning(t, dark):
-    w, h = 500, 248
-    L = CFG["learning"]
-    defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=32, ix=8, iy=8, rx=24)
-    stops = [("0%", "#FBBF24", "0.48"), ("65%", "#F59E0B", "0.20"), ("100%", "#F59E0B", "0")]
-    defs += cubic_orb_defs("learn", w, h, t, "90%", "88%", "65%", stops, "440", "210", "245", "175")
-
-    b = bg
-    b += cubic_orb_layer("learn", ix, iy, cw, ch, opacity=0.90 if not dark else 0.75)
-    b += kicker(px, 54, "Currently learning", t["muted"], t["amber"], size=12)
-    lines = wrap(L["title"], 28)
-    for i, ln in enumerate(lines[:2]):
-        b += H_fit(px, 100 + i * 30, ln, 25, t["text"], maxw=pr - px, weight=700, ls=-0.6)
-
-    # 3 proportionally balanced frosted tile blocks
-    chips = L["chips"][:3]
-    gap = 10
-    avail = pr - px - gap * (len(chips) - 1)
-    raw_w = [max(76.0, est(ch, 12.0, 0.62) + 34.0) for ch in chips]
-    scale = avail / max(1.0, sum(raw_w))
-    cx = px
-    cy = 166
-    for idx, chip in enumerate(chips):
-        tw = raw_w[idx] * scale
-        b += f'<rect x="{cx:.1f}" y="{cy}" width="{tw:.1f}" height="42" rx="12" fill="{t["tile"]}" stroke="{t["border"]}" stroke-width="1"/>'
-        b += T(cx + tw / 2, cy + 25.5, chip, 12.0, t["text"], 600, MONO, anchor="middle")
-        cx += tw + gap
-
-    b += br
-    return svg(w, h, defs, b, "Currently learning: " + ", ".join(L["chips"]) + ".")
-
-
 def tech(t, dark):
-    w, h = 1000, 266
+    w, h = 1000, 344
+    L = CFG["learning"]
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=36, rx=24)
+    stops = [("0%", "#FBBF24", "0.44"), ("65%", "#F59E0B", "0.18"), ("100%", "#F59E0B", "0")]
+    defs += font_style("a700", "m400") + cubic_orb_defs("learn", w, h, t, "92%", "90%", "58%", stops, "890", "292", "340", "195")
+
     b = bg
-    b += kicker(px, 54, "Tech stack", t["muted"], t["red"], size=12)
-    b += T(px, 98, "What I use", 34, t["text"], 800, HEAD, ls=-1.2)
+    b += cubic_orb_layer("learn", ix, iy, cw, ch, opacity=0.88 if not dark else 0.72)
+    b += T(px, 78, "Tech I use", 34, t["text"], 800, HEAD, ls=-1.7)
 
     gap = 10
     cols = 4
     cell_w = (pr - px - gap * (cols - 1)) / cols
-    cell_h = 52
+    cell_h = 50
     for idx, s in enumerate(CFG["stack"]):
         r, c = divmod(idx, cols)
         cx = px + c * (cell_w + gap)
-        cy = 122 + r * (cell_h + gap)
+        cy = 104 + r * (cell_h + gap)
         b += f'<rect x="{cx:.1f}" y="{cy:.1f}" width="{cell_w:.1f}" height="{cell_h}" rx="14" fill="{t["subtle"]}" stroke="{t["border"]}" stroke-width="1"/>'
-        b += T(cx + 18, cy + 31, s, 15, t["text"], 600, HEAD)
-        b += T(cx + cell_w - 18, cy + 30.5, f"{idx+1:02d}", 11.5, t["muted"], 500, MONO, anchor="end")
+        b += T(cx + cell_w / 2, cy + 30, s, 14.5, t["text"], 600, HEAD, anchor="middle")
+
+    # Divider separating Tech I use and Currently learning strip
+    b += f'<line x1="{px}" y1="236" x2="{pr}" y2="236" stroke="{t["border"]}" stroke-width="1"/>'
+
+    # Bottom strip: Currently learning heading on left, 3 balanced frosted chips on right
+    b += H_fit(px, 286, L["title"], 23, t["text"], maxw=416, weight=700, ls=-0.95)
+
+    chips = L["chips"][:3]
+    chip_x0 = 514.0
+    chip_gap = 10.0
+    avail = pr - chip_x0 - chip_gap * (len(chips) - 1)
+    raw_w = [max(76.0, est(ch, 12.0, 0.62) + 34.0) for ch in chips]
+    scale = avail / max(1.0, sum(raw_w))
+    cx = chip_x0
+    cy = 256.0
+    for idx, chip in enumerate(chips):
+        tw = raw_w[idx] * scale
+        b += f'<rect x="{cx:.1f}" y="{cy:.1f}" width="{tw:.1f}" height="44" rx="12" fill="{t["tile"]}" stroke="{t["border"]}" stroke-width="1"/>'
+        b += T(cx + tw / 2, cy + 26.5, chip, 12.0, t["text"], 600, MONO, anchor="middle")
+        cx += tw + chip_gap
 
     b += br
-    return svg(w, h, defs, b, "Tech stack: " + ", ".join(CFG["stack"]) + ".")
+    return svg(w, h, defs, b, "Tech I use: " + ", ".join(CFG["stack"]) + ". Currently learning: " + ", ".join(L["chips"]) + ".")
 
 
 def how(t, dark):
-    w, h = 1000, 232
+    w, h = 1000, 206
     H_ = CFG["howIWork"]
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=36, rx=24)
+    defs += font_style("a700", "m400")
     b = bg
-    b += kicker(px, 54, "How I work", t["muted"], t["green_bright"], size=12)
 
     clean_text = H_["text"].rstrip(" ,…") + ":"
-    lines = wrap(clean_text, 62)
-    y = 92
+    lines = wrap(clean_text, 58)
+    y = 66
     for ln in lines[:2]:
-        b += T(px, y, ln, 21, t["text"], 600, HEAD, ls=-0.4)
+        b += T(px, y, ln, 20, t["text"], 600, HEAD, ls=-0.7)
         y += 30
 
     gap = 10
     tools = H_["tools"]
     tw = (pr - px - gap * (len(tools) - 1)) / max(1, len(tools))
-    ty = 148
+    ty = 122
     for idx, tool in enumerate(tools):
         cx = px + idx * (tw + gap)
         b += f'<rect x="{cx:.1f}" y="{ty}" width="{tw:.1f}" height="52" rx="14" fill="{t["tool_bg"]}" stroke="{t["tool_border"]}" stroke-width="1"/>'
-        b += T(cx + 18, ty + 31, tool, 15, t["text"], 700, HEAD)
+        b += T(cx + 18, ty + 31, tool, 15, t["text"], 700, HEAD, ls=-0.45)
         b += f'<rect x="{cx + tw - 26:.1f}" y="{ty + 22}" width="8" height="8" rx="2" fill="{t["amber"]}"/>'
 
     b += br
@@ -678,10 +746,11 @@ def how(t, dark):
 
 def coding_label(t, dark):
     w, h = 1000, 44
-    b = kicker(14, 28, "What I'm coding", t["muted"], t["red"], size=12)
+    defs = font_style("a700", "m400")
+    b = kicker(14, 28, "What i Built", t["muted"], t["red"], size=12)
     b += T(w - 30, 28, "All Repositories", 13.5, t["secondary"], 600, HEAD, anchor="end")
     b += arrow_ne(w - 22, 18.5, 9, t["secondary"], sw=1.8)
-    return svg(w, h, "", b, "What I'm coding")
+    return svg(w, h, defs, b, "What i Built")
 
 
 def project(p, t, dark):
@@ -694,27 +763,27 @@ def project(p, t, dark):
         "yellow": (t["amber"], "Python · MySQL", [("0%", "#FBBF24", "0.62"), ("55%", "#F59E0B", "0.25"), ("100%", "#F59E0B", "0")]),
     }
     dot_col, sub_tag, stops = palette.get(p["color"], palette["green"])
-    defs += cubic_orb_defs(p["slug"], w, h, t, "88%", "74%", "58%", stops, "280", "205", "165", "150")
+    defs += font_style("a400", "a700", "m400") + cubic_orb_defs(p["slug"], w, h, t, "88%", "74%", "58%", stops, "280", "205", "165", "150")
 
     b = bg
     b += cubic_orb_layer(p["slug"], ix, iy, cw, ch, opacity=0.84 if not dark else 0.72)
 
     # Unboxed metadata line
-    b += kicker(px, 50, f'{p["tag"]} · {sub_tag}', t["muted"], dot_col, size=11)
+    b += kicker(px, 50, f'{p["tag"]} · {sub_tag}', t["muted"], dot_col, size=10.5)
 
     # Title (camelCase split cleanly)
     spaced_name = re.sub(r"([a-z])([A-Z])", r"\1 \2", p["name"])
-    title_lines = wrap(spaced_name, 20)
+    title_lines = wrap(spaced_name, 19)
     if len(title_lines) == 1:
-        b += H_fit(px, 86, title_lines[0], 21, t["text"], maxw=pr - px, weight=700, ls=-0.5)
+        b += H_fit(px, 86, title_lines[0], 20.5, t["text"], maxw=pr - px, weight=700, ls=-0.8)
         dy = 114
     else:
-        b += H_fit(px, 84, title_lines[0], 21, t["text"], maxw=pr - px, weight=700, ls=-0.5)
-        b += H_fit(px, 108, title_lines[1], 21, t["text"], maxw=pr - px, weight=700, ls=-0.5)
+        b += H_fit(px, 84, title_lines[0], 20.5, t["text"], maxw=pr - px, weight=700, ls=-0.8)
+        b += H_fit(px, 108, title_lines[1], 20.5, t["text"], maxw=pr - px, weight=700, ls=-0.8)
         dy = 136
 
-    for i, ln in enumerate(wrap(p["desc"], 29)[:3]):
-        b += T(px, dy + i * 21, ln, 13.8, t["secondary"], 400, HEAD)
+    for i, ln in enumerate(wrap(p["desc"], 27)[:3]):
+        b += T(px, dy + i * 21, ln, 13.5, t["secondary"], 400, HEAD, ls=-0.35)
 
     # Bottom footer bar
     b += f'<line x1="{px}" y1="214" x2="{pr}" y2="214" stroke="{t["border"]}" stroke-width="1"/>'
@@ -725,63 +794,63 @@ def project(p, t, dark):
     return svg(w, h, defs, b, f'{p["name"]}: {p["desc"]} ({p["tag"]}). Opens the repository.')
 
 
-def contact_header(t, dark):
-    w, h = 1000, 162
-    defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=36, rx=24)
-    stops = [
-        ("0%", "#8B5CF6", "0.46" if not dark else "0.42"),
-        ("45%", "#2563EB", "0.32"),
-        ("80%", "#FBBF24", "0.18"),
-        ("100%", "#2563EB", "0"),
-    ]
-    defs += cubic_orb_defs("contact", w, h, t, "82%", "50%", "55%", stops, "820", "82", "360", "130")
+CONTACT_THEMES = {
+    "portfolio": dict(
+        stops=[("0%", "#FEF08A", "0.90"), ("42%", "#FBBF24", "0.68"), ("80%", "#F59E0B", "0.30"), ("100%", "#F59E0B", "0")],
+        dot_light="#D97706", dot_dark="#FBBF24",
+        border_light="rgba(245,158,11,0.42)", border_dark="rgba(251,191,36,0.36)",
+    ),
+    "linkedin": dict(
+        stops=[("0%", "#93C5FD", "0.88"), ("42%", "#0A66C2", "0.66"), ("82%", "#1D4ED8", "0.28"), ("100%", "#1D4ED8", "0")],
+        dot_light="#0A66C2", dot_dark="#38BDF8",
+        border_light="rgba(10,102,194,0.32)", border_dark="rgba(56,189,248,0.32)",
+    ),
+    "fiverr": dict(
+        stops=[("0%", "#A7F3D0", "0.88"), ("42%", "#1DBF73", "0.66"), ("82%", "#059669", "0.28"), ("100%", "#059669", "0")],
+        dot_light="#15803D", dot_dark="#34D399",
+        border_light="rgba(29,191,115,0.32)", border_dark="rgba(52,211,153,0.32)",
+    ),
+    "hackerrank": dict(
+        stops=[("0%", "#86EFAC", "0.90"), ("42%", "#00EA64", "0.66"), ("82%", "#16A34A", "0.28"), ("100%", "#16A34A", "0")],
+        dot_light="#16A34A", dot_dark="#00EA64",
+        border_light="rgba(22,163,74,0.34)", border_dark="rgba(0,234,100,0.34)",
+    ),
+    "leetcode": dict(
+        stops=[("0%", "#FED7AA", "0.90"), ("42%", "#FFA116", "0.68"), ("82%", "#EA580C", "0.28"), ("100%", "#EA580C", "0")],
+        dot_light="#EA580C", dot_dark="#FFA116",
+        border_light="rgba(234,88,12,0.32)", border_dark="rgba(255,161,22,0.32)",
+    ),
+}
 
-    b = bg
-    b += cubic_orb_layer("contact", ix, iy, cw, ch, opacity=0.95)
-    b += kicker(px, 56, "Contact", t["muted"], t["red"], size=12)
-    b += (
-        f'<text x="{px}" y="114" font-family="{HEAD}" font-size="48" font-weight="800" letter-spacing="-1.8" fill="{t["text"]}">'
-        f'Let\'s <tspan font-family="{SERIF}" font-style="italic" font-weight="600" font-size="52">talk.</tspan></text>'
+
+def contact_btn(key, name, filled, yellow, t, dark):
+    w, h = 250, 108
+    defs, bg, _, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=18, ix=6, iy=6, rx=16)
+    ct = CONTACT_THEMES.get(key, CONTACT_THEMES["linkedin"])
+    border_col = ct["border_dark"] if dark else ct["border_light"]
+    dot_col = ct["dot_dark"] if dark else ct["dot_light"]
+
+    defs += font_style("a700", "m400") + cubic_orb_defs(
+        f"c-{key}", w, h, t, "84%", "86%", "78%", ct["stops"], "206", "92", "185", "88", tile_size=24
     )
 
-    bw = 166
-    bx = pr - bw
-    b += f'<rect x="{bx}" y="78" width="{bw}" height="40" rx="12" fill="{t["btn_bg"]}"/>'
-    b += T(bx + 18, 103, "Open Portfolio", 13.5, t["btn_fg"], 600, HEAD)
-    b += arrow_ne(bx + bw - 28, 92, 10, t["btn_fg"], sw=2)
-    b += br
-    return svg(w, h, defs, b, "Contact. Let's talk.")
+    orb_op = (0.86 if not dark else 0.72) if filled else (0.64 if not dark else 0.52)
+    b = bg
+    b += cubic_orb_layer(f"c-{key}", ix, iy, cw, ch, opacity=orb_op)
+    b += f'<rect x="{ix}" y="{iy}" width="{cw:g}" height="{ch:g}" rx="16" fill="none" stroke="{border_col}" stroke-width="1.5"/>'
 
-
-def contact_btn(name, filled, yellow, t, dark):
-    w, h = 200, 108
-    defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=18, ix=6, iy=6, rx=16)
-
-    if yellow:
-        defs += (
-            '<linearGradient id="goldBtn" x1="0%" y1="0%" x2="100%" y2="100%">'
-            '<stop offset="0%" stop-color="#FFD43B"/><stop offset="100%" stop-color="#F5B700"/>'
-            "</linearGradient>"
-        )
-        b = (
-            f'<rect x="{ix}" y="{iy}" width="{cw:g}" height="{ch:g}" rx="16" fill="url(#goldBtn)" filter="url(#sh)"/>'
-            f'<rect x="{ix}" y="{iy}" width="{cw:g}" height="{ch:g}" rx="16" fill="none" stroke="rgba(15,23,42,0.16)" stroke-width="1.5"/>'
-        )
-        b += T(px, 40, name, 14.5, INK, 700, HEAD)
-        b += arrow_ne(pr - 12, 29, 9, INK, sw=2)
-        b += T(px, 78, "Open live site", 11, "rgba(15,23,42,0.72)", 600, MONO)
-    elif filled:
-        b = bg
-        b += T(px, 40, name, 14.5, t["text"], 700, HEAD)
+    text_op = "1" if filled else "0.78"
+    b += f'<g opacity="{text_op}">'
+    b += f'<rect x="{px}" y="30.5" width="8" height="8" rx="2.5" fill="{dot_col}"/>'
+    b += T(px + 14, 39.5, name, 14, t["text"], 700, HEAD)
+    if filled:
         b += arrow_ne(pr - 12, 29, 9, t["text"], sw=2)
-        b += T(px, 78, "Connect", 11, t["muted"], 500, MONO)
-        b += br
+        sub = "Open live site" if yellow else "Connect"
+        b += T(px, 78, sub, 11, t["secondary"] if not dark else "#CBD5E1", 600, MONO)
     else:
-        b = f'<g opacity="0.72">{bg}'
-        b += T(px, 40, name, 14.5, t["text"], 700, HEAD)
-        b += T(pr - 4, 40, "·", 14.5, t["muted"], 700, MONO, anchor="end")
-        b += T(px, 78, "Coming soon", 11, t["muted"], 500, MONO)
-        b += br + "</g>"
+        b += T(pr - 4, 39.5, "·", 14, t["muted"], 700, MONO, anchor="end")
+        b += T(px, 78, "Coming soon", 11, t["muted"], 400, MONO)
+    b += "</g>"
 
     return svg(w, h, defs, b, f"{name} link" + ("" if filled else " (coming soon)"))
 
@@ -811,23 +880,19 @@ def build():
     add("stats", lambda t, d: stats_card(t, d, S))
     for k in ("build", "solve", "create"):
         add(f"tile-{k}", lambda t, d, k=k: tile(k, t, d))
-    add("education", lambda t, d: education(t, d))
-    add("learning", lambda t, d: learning(t, d))
     add("tech", lambda t, d: tech(t, d))
     add("how-i-work", lambda t, d: how(t, d))
     add("coding-label", lambda t, d: coding_label(t, d))
     for p in CFG["projects"]:
         add(f"project-{p['slug']}", lambda t, d, p=p: project(p, t, d))
-    add("contact-header", lambda t, d: contact_header(t, d))
     btns = [
-        ("portfolio", "Portfolio", href(L["portfolio"]), True),
-        ("linkedin", "LinkedIn", href(L["linkedin"]), False),
-        ("email", "Email", href(L["email"], True), False),
-        ("resume", "Resume", href(L["resume"]), False),
-        ("leetcode", "LeetCode", href(L["leetcode"]), False),
+        ("linkedin", "LinkedIn", href(L.get("linkedin")), False),
+        ("fiverr", "Fiverr", href(L.get("fiverr")), False),
+        ("hackerrank", "HackerRank", href(L.get("hackerrank")), False),
+        ("leetcode", "LeetCode", href(L.get("leetcode")), False),
     ]
     for key, nm, url, yel in btns:
-        add(f"contact-{key}", lambda t, d, nm=nm, url=url, yel=yel: contact_btn(nm, bool(url), yel, t, d))
+        add(f"contact-{key}", lambda t, d, key=key, nm=nm, url=url, yel=yel: contact_btn(key, nm, bool(url), yel, t, d))
 
     repos = f"{PROFILE_URL}?tab=repositories"
     rows = [
@@ -836,19 +901,14 @@ def build():
         [("stats", 100, PROFILE_URL, f"{S['total']} contributions in the last 12 months with streak and activity stats")],
         [
             ("tile-build", 33.3, repos, "Build: 3 apps"),
-            ("tile-solve", 33.3, href(L["leetcode"]) or PROFILE_URL, "Solve: 120+ LeetCode problems"),
+            ("tile-solve", 33.3, href(L.get("leetcode")) or PROFILE_URL, "Solve: 120+ LeetCode problems"),
             ("tile-create", 33.3, L["portfolio"], "Create: AI visual design and digital storytelling"),
         ],
-        [
-            ("education", 50, None, f"Education: {CFG['education']['degree']}, {CFG['education']['score']} CGPA"),
-            ("learning", 50, None, "Currently learning: " + ", ".join(CFG["learning"]["chips"])),
-        ],
-        [("tech", 100, None, "Tech stack: " + ", ".join(CFG["stack"]))],
+        [("tech", 100, None, "Tech I use: " + ", ".join(CFG["stack"]) + ". Currently learning: " + ", ".join(CFG["learning"]["chips"]))],
         [("how-i-work", 100, None, "How I work: AI-assisted development with " + ", ".join(CFG["howIWork"]["tools"]))],
-        [("coding-label", 100, repos, "What I'm coding")],
+        [("coding-label", 100, repos, "What i Built")],
         [(f"project-{p['slug']}", 33.3, p["repo"] or repos, f"{p['name']}: {p['desc']}") for p in CFG["projects"]],
-        [("contact-header", 100, L["portfolio"], "Contact. Let's talk.")],
-        [(f"contact-{k}", 20, (u or PROFILE_URL), f"{nm} link") for k, nm, u, _ in btns],
+        [(f"contact-{k}", 25, (u or PROFILE_URL), f"{nm} link") for k, nm, u, _ in btns],
     ]
 
     def pic(prefix, name, w, link, alt):
