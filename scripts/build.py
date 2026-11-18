@@ -77,26 +77,60 @@ def card(w, h, fill, t, pad=48, sw=3, stroke=None, shadow=None):
 # ------------------------------------------------------------ contribution data
 def load_contributions():
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
+    end = dt.date.today()
     if token:
         try:
-            end = dt.date.today()
             frm = end - dt.timedelta(days=364)
             q = ("query($u:String!,$f:DateTime!,$t:DateTime!){user(login:$u){contributionsCollection(from:$f,to:$t)"
                  "{contributionCalendar{weeks{contributionDays{date contributionCount}}}}}}")
             payload = json.dumps({"query": q, "variables": {
                 "u": USER, "f": frm.isoformat() + "T00:00:00Z", "t": end.isoformat() + "T23:59:59Z"}}).encode()
             req = urllib.request.Request("https://api.github.com/graphql", payload,
-                                         {"Authorization": f"bearer {token}", "Content-Type": "application/json"})
-            data = json.load(urllib.request.urlopen(req, timeout=30))
+                                         {"Authorization": f"bearer {token}", "Content-Type": "application/json",
+                                          "User-Agent": "profile-builder"})
+            data = json.load(urllib.request.urlopen(req, timeout=15))
             weeks = data["data"]["user"]["contributionsCollection"]["contributionCalendar"]["weeks"]
             days = {d["date"]: d["contributionCount"] for w in weeks for d in w["contributionDays"]}
-            print("Using live GitHub data")
+            print("Using live GitHub GraphQL data")
+            try:
+                (ROOT / "data" / "sample-contributions.json").write_text(
+                    json.dumps({"end": end.isoformat(), "days": days}, indent=1), encoding="utf-8"
+                )
+            except Exception:
+                pass
             return end, days
-        except Exception as e:  # fall back to sample
-            print("GraphQL failed, using sample data:", e, file=sys.stderr)
-    s = json.loads((ROOT / "data" / "sample-contributions.json").read_text())
-    print("Using sample data (placeholder for local preview)")
-    return dt.date.fromisoformat(s["end"]), s["days"]
+        except Exception as e:
+            print("GraphQL fetch failed, trying public API fallback:", e, file=sys.stderr)
+
+    # Public contributions API fallback (no token required)
+    try:
+        url = f"https://github-contributions-api.jogruber.de/v4/{USER}?y=last"
+        req = urllib.request.Request(url, headers={"User-Agent": "profile-builder"})
+        data = json.load(urllib.request.urlopen(req, timeout=15))
+        if "contributions" in data and data["contributions"]:
+            days = {item["date"]: item["count"] for item in data["contributions"]}
+            print("Using live GitHub data via public contributions API")
+            try:
+                (ROOT / "data" / "sample-contributions.json").write_text(
+                    json.dumps({"end": end.isoformat(), "days": days}, indent=1), encoding="utf-8"
+                )
+            except Exception:
+                pass
+            return end, days
+    except Exception as e:
+        print("Public contributions API unavailable, falling back to local data:", e, file=sys.stderr)
+
+    # Local fallback with date shifting to current date
+    s = json.loads((ROOT / "data" / "sample-contributions.json").read_text(encoding="utf-8"))
+    sample_end = dt.date.fromisoformat(s["end"])
+    offset = (end - sample_end).days
+    shifted_days = {}
+    for d_str, count in s.get("days", {}).items():
+        orig_d = dt.date.fromisoformat(d_str)
+        new_d = orig_d + dt.timedelta(days=offset)
+        shifted_days[new_d.isoformat()] = count
+    print("Using local contributions data (adjusted for preview)")
+    return end, shifted_days
 
 def stats(end, days):
     cnt = lambda d: days.get(d.isoformat(), 0)
@@ -139,12 +173,16 @@ def hero(t, dark):
         b += T(ix, 402 + i * 36, ln, 28, t["text"], 400, HEAD)
     # illustration box
     bx, by, bw, bh = 600, 42, 340, 430
-    b += f'<rect x="{bx}" y="{by}" width="{bw}" height="{bh}" rx="28" fill="#F3F1E7" stroke="{t["border"]}" stroke-width="3"/>'
-    p = ROOT / "assets" / "hero.png"
+    box_bg = "#F3F1E7" if not dark else "#1D242C"
+    b += f'<rect x="{bx}" y="{by}" width="{bw}" height="{bh}" rx="28" fill="{box_bg}" stroke="{t["border"]}" stroke-width="3"/>'
+    p_gif = ROOT / "assets" / "hero.gif"
+    p_png = ROOT / "assets" / "hero.png"
+    p = p_gif if p_gif.exists() else p_png
     if p.exists():
+        mime = "image/gif" if p.suffix.lower() == ".gif" else "image/png"
         uri = base64.b64encode(p.read_bytes()).decode()
         b += (f'<image x="{bx+14}" y="{by+14}" width="{bw-28}" height="{bh-28}" preserveAspectRatio="xMidYMid meet" '
-              f'href="data:image/png;base64,{uri}"/>')
+              f'href="data:{mime};base64,{uri}"/>')
     else:
         b += (f'<rect x="680" y="130" width="180" height="130" fill="{INK}" stroke="{INK}" stroke-width="12"/>'
               f'<rect x="750" y="272" width="40" height="30" fill="{INK}"/><rect x="725" y="300" width="90" height="14" fill="{INK}"/>'
@@ -403,25 +441,233 @@ def build():
         [(f"contact-{k}", 20, (u or PROFILE_URL), f"{nm} link") for k, nm, u, _ in btns],
     ]
     def pic(prefix, name, w, link, alt):
-        img = (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{prefix}assets/dark/{name}.svg">'
-               f'<img src="{prefix}assets/light/{name}.svg" alt="{esc(alt)}" width="{w}%" align="top"></picture>')
+        img = (f'<picture>'
+               f'<source media="(prefers-color-scheme: dark)" srcset="{prefix}assets/dark/{name}.svg">'
+               f'<source media="(prefers-color-scheme: light)" srcset="{prefix}assets/light/{name}.svg">'
+               f'<img src="{prefix}assets/light/{name}.svg" alt="{esc(alt)}" width="{w}%" align="top">'
+               f'</picture>')
         return f'<a href="{link}">{img}</a>' if link else img
     md = ["<!-- AUTO-GENERATED by scripts/build.py. Edit profile.config.json, then run: python scripts/build.py -->"]
     for r in rows:
         md.append("<div>" + "".join(pic("", *c) for c in r) + "</div>")
     (ROOT / "README.md").write_text("\n\n".join(md) + "\n", encoding="utf-8")
 
-    # preview.html: light + dark shells (open in any browser, no server needed)
-    def block(bg, fg, cls):
-        inner = "".join("<div>" + "".join(
-            (f'<a href="{c[2]}">' if c[2] else "") +
+    # preview.html: interactive Light, Dark, Split, and Adaptive preview
+    def render_cards(cls):
+        return "".join("<div>" + "".join(
+            (f'<a href="{c[2]}" target="_blank">' if c[2] else "") +
             f'<img src="assets/{cls}/{c[0]}.svg" alt="{esc(c[3])}" width="{c[1]}%" align="top" style="vertical-align:top">' +
             ("</a>" if c[2] else "") for c in r) + "</div>" for r in rows)
-        return f'<section style="background:{bg};color:{fg};padding:16px;border:1px solid #8884;max-width:920px;margin:0 auto 24px">{inner}</section>'
-    html = ("<!doctype html><meta charset=utf-8><title>Profile preview</title><body style='margin:0;font:14px system-ui;background:#888'>"
-            "<h3 style='text-align:center;color:#fff'>Light mode</h3>" + block("#fff", "#000", "light") +
-            "<h3 style='text-align:center;color:#fff'>Dark mode</h3>" + block("#0D1117", "#fff", "dark"))
+
+    def render_adaptive():
+        return "".join("<div>" + "".join(pic("", *c) for c in r) + "</div>" for r in rows)
+
+    light_body = render_cards("light")
+    dark_body = render_cards("dark")
+    adaptive_body = render_adaptive()
+
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile Preview · Tarun Suthar</title>
+  <style>
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #1b1f24;
+      color: #e6edf3;
+      padding-top: 64px;
+    }}
+    .nav-bar {{
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 1000;
+    }}
+    .nav-title {{
+      font-weight: 700;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }}
+    .nav-title span {{
+      color: #7ee787;
+      font-size: 12px;
+      background: rgba(46, 160, 67, 0.15);
+      border: 1px solid rgba(46, 160, 67, 0.4);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }}
+    .btn-group {{
+      display: flex;
+      background: #0d1117;
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      gap: 2px;
+    }}
+    .btn-group button {{
+      background: transparent;
+      border: none;
+      color: #8b949e;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }}
+    .btn-group button:hover {{
+      color: #f0f6fc;
+    }}
+    .btn-group button.active {{
+      background: #21262d;
+      color: #f0f6fc;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }}
+    .preview-container {{
+      max-width: 960px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }}
+    .split-layout {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 1920px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }}
+    .card-shell {{
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }}
+    .shell-light {{
+      background: #ffffff;
+      color: #1f2328;
+      border: 1px solid #d0d7de;
+    }}
+    .shell-dark {{
+      background: #0d1117;
+      color: #f0f6fc;
+      border: 1px solid #30363d;
+    }}
+    .shell-header {{
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(128,128,128,0.2);
+      display: flex;
+      justify-content: space-between;
+    }}
+    .shell-light .shell-header {{ color: #57606a; }}
+    .shell-dark .shell-header {{ color: #8b949e; }}
+    img, picture {{ display: block; }}
+  </style>
+</head>
+<body>
+  <div class="nav-bar">
+    <div class="nav-title">
+      Tarun Suthar Profile <span>Live Preview</span>
+    </div>
+    <div class="btn-group">
+      <button id="btn-adaptive" onclick="setMode('adaptive')" class="active">Adaptive (Auto)</button>
+      <button id="btn-dark" onclick="setMode('dark')">Dark Mode</button>
+      <button id="btn-light" onclick="setMode('light')">Light Mode</button>
+      <button id="btn-split" onclick="setMode('split')">Side-by-Side</button>
+    </div>
+  </div>
+
+  <div id="view-single" class="preview-container">
+    <div id="target-shell" class="card-shell shell-dark">
+      <div class="shell-header">
+        <span id="shell-label">Adaptive Mode (&lt;picture&gt; elements)</span>
+        <span>GitHub Profile View</span>
+      </div>
+      <div id="content-single">{adaptive_body}</div>
+    </div>
+  </div>
+
+  <div id="view-split" class="split-layout" style="display: none;">
+    <div class="card-shell shell-light">
+      <div class="shell-header">
+        <span>Light Mode</span>
+        <span>assets/light/*.svg</span>
+      </div>
+      <div>{light_body}</div>
+    </div>
+    <div class="card-shell shell-dark">
+      <div class="shell-header">
+        <span>Dark Mode</span>
+        <span>assets/dark/*.svg</span>
+      </div>
+      <div>{dark_body}</div>
+    </div>
+  </div>
+
+  <script>
+    const bodies = {{
+      light: {json.dumps(light_body)},
+      dark: {json.dumps(dark_body)},
+      adaptive: {json.dumps(adaptive_body)}
+    }};
+
+    function setMode(mode) {{
+      document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById('btn-' + mode);
+      if (btn) btn.classList.add('active');
+
+      const single = document.getElementById('view-single');
+      const split = document.getElementById('view-split');
+      const shell = document.getElementById('target-shell');
+      const label = document.getElementById('shell-label');
+      const content = document.getElementById('content-single');
+
+      if (mode === 'split') {{
+        single.style.display = 'none';
+        split.style.display = 'grid';
+      }} else {{
+        split.style.display = 'none';
+        single.style.display = 'block';
+        content.innerHTML = bodies[mode];
+
+        if (mode === 'light') {{
+          shell.className = 'card-shell shell-light';
+          label.textContent = 'Light Mode Preview';
+        }} else if (mode === 'dark') {{
+          shell.className = 'card-shell shell-dark';
+          label.textContent = 'Dark Mode Preview';
+        }} else {{
+          shell.className = 'card-shell shell-dark';
+          label.textContent = 'Adaptive Mode (Auto switches via prefers-color-scheme)';
+        }}
+      }}
+    }}
+  </script>
+</body>
+</html>"""
     (ROOT / "preview.html").write_text(html, encoding="utf-8")
+    # Also write a pkg/preview.html copy for backward compatibility
+    pkg_dir = ROOT / "pkg"
+    pkg_dir.mkdir(exist_ok=True)
+    pkg_html = html.replace('src="assets/', 'src="../assets/').replace('srcset="assets/', 'srcset="../assets/')
+    (pkg_dir / "preview.html").write_text(pkg_html, encoding="utf-8")
     print("Built", sum(1 for _ in (ROOT / "assets").rglob("*.svg")), "SVGs + README.md + preview.html")
 
 if __name__ == "__main__":
