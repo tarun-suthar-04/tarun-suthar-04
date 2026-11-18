@@ -1085,8 +1085,8 @@ def build():
         md.append("<div>" + "".join(pic("", *c) for c in r) + "</div>")
     (ROOT / "README.md").write_text("\n\n".join(md) + "\n", encoding="utf-8")
 
-    # Keep pkg/preview.html as an SVG README inspector so both Light/Dark/Adaptive SVGs can be verified directly
-    def render_cards(cls, prefix="../"):
+    # Generate preview.html (at root and pkg/preview.html) so SVG README can be previewed directly
+    def render_cards(cls, prefix=""):
         return "".join(
             "<div>"
             + "".join(
@@ -1099,14 +1099,17 @@ def build():
             for r in rows
         )
 
-    def render_adaptive(prefix="../"):
+    def render_adaptive(prefix=""):
         return "".join("<div>" + "".join(pic(prefix, *c) for c in r) + "</div>" for r in rows)
 
-    light_body = render_cards("light")
-    dark_body = render_cards("dark")
-    adaptive_body = render_adaptive()
+    def generate_preview_page(prefix=""):
+        light_b = render_cards("light", prefix=prefix)
+        dark_b = render_cards("dark", prefix=prefix)
+        adaptive_b = render_adaptive(prefix=prefix)
+        label_light = f"Light Mode ({prefix}assets/light/*.svg)"
+        label_dark = f"Dark Mode ({prefix}assets/dark/*.svg)"
 
-    pkg_html = f"""<!doctype html>
+        return f"""<!doctype html>
 <html lang="en" data-color-mode="light">
 <head>
   <meta charset="utf-8">
@@ -1205,16 +1208,16 @@ def build():
   </div>
   <div id="view-single" class="preview-container">
     <div id="target-shell" class="card-shell shell-light">
-      <div class="shell-header"><span id="shell-label">Light Mode (../assets/light/*.svg)</span><span>GitHub README View</span></div>
-      <div id="content-single">{light_body}</div>
+      <div class="shell-header"><span id="shell-label">{label_light}</span><span>GitHub README View</span></div>
+      <div id="content-single">{light_b}</div>
     </div>
   </div>
   <div id="view-split" class="split-layout" style="display: none;">
-    <div class="card-shell shell-light"><div class="shell-header"><span>Light Mode</span><span>../assets/light/*.svg</span></div><div>{light_body}</div></div>
-    <div class="card-shell shell-dark"><div class="shell-header"><span>Dark Mode</span><span>../assets/dark/*.svg</span></div><div>{dark_body}</div></div>
+    <div class="card-shell shell-light"><div class="shell-header"><span>Light Mode</span><span>{prefix}assets/light/*.svg</span></div><div>{light_b}</div></div>
+    <div class="card-shell shell-dark"><div class="shell-header"><span>Dark Mode</span><span>{prefix}assets/dark/*.svg</span></div><div>{dark_b}</div></div>
   </div>
   <script>
-    const bodies = {{ light: {json.dumps(light_body)}, dark: {json.dumps(dark_body)}, adaptive: {json.dumps(adaptive_body)} }};
+    const bodies = {{ light: {json.dumps(light_b)}, dark: {json.dumps(dark_b)}, adaptive: {json.dumps(adaptive_b)} }};
     function setMode(mode) {{
       document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
       const btn = document.getElementById('btn-' + mode);
@@ -1235,11 +1238,11 @@ def build():
         if (mode === 'light') {{
           document.body.style.background = '#f6f8fa';
           shell.className = 'card-shell shell-light';
-          label.textContent = 'Light Mode (../assets/light/*.svg)';
+          label.textContent = '{label_light}';
         }} else if (mode === 'dark') {{
           document.body.style.background = '#010409';
           shell.className = 'card-shell shell-dark';
-          label.textContent = 'Dark Mode (../assets/dark/*.svg)';
+          label.textContent = '{label_dark}';
         }} else {{
           const isDarkOS = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
           document.body.style.background = isDarkOS ? '#010409' : '#f6f8fa';
@@ -1251,11 +1254,13 @@ def build():
   </script>
 </body>
 </html>"""
+
+    (ROOT / "preview.html").write_text(generate_preview_page(prefix=""), encoding="utf-8")
     pkg_dir = ROOT / "pkg"
     pkg_dir.mkdir(exist_ok=True)
-    (pkg_dir / "preview.html").write_text(pkg_html, encoding="utf-8")
+    (pkg_dir / "preview.html").write_text(generate_preview_page(prefix="../"), encoding="utf-8")
 
-    print("Built", sum(1 for _ in (ROOT / "assets").rglob("*.svg")), "SVGs + README.md + pkg/preview.html")
+    print("Built", sum(1 for _ in (ROOT / "assets").rglob("*.svg")), "SVGs + README.md + preview.html + pkg/preview.html")
 
 
 if __name__ == "__main__":
