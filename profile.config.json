@@ -1,6 +1,9 @@
 {
   "username": "tarun-suthar-04",
-  "name": ["Tarun", "Suthar"],
+  "name": [
+    "Tarun",
+    "Suthar"
+  ],
   "label": "AI-assisted developer",
   "tagline": "Building secure Java, Android, and Python applications, with AI-assisted workflows.",
   "links": {
@@ -8,35 +11,71 @@
     "linkedin": "https://www.linkedin.com/in/tarun-suthar-307838266",
     "fiverr": "https://www.fiverr.com/tarun_suthar",
     "hackerrank": "https://www.hackerrank.com/profile/tarun_suthar",
-    "leetcode": ""
+    "leetcode": "https://leetcode.com/u/tarun_suthar/"
   },
   "tiles": {
-    "build": {"big": "3", "unit": "apps", "text": "Pixault security vault, Order Manager retail app, and Employee Management."},
-    "solve": {"big": "120+", "unit": "problems", "text": "LeetCode DSA problems solved and 45 Days Grind."},
-    "create": {"big": "Visuals", "text": "AI visual design and digital storytelling."}
+    "build": {
+      "big": "3",
+      "unit": "apps",
+      "text": "Pixault security vault, Order Manager retail app, and Employee Management."
+    },
+    "solve": {
+      "big": "120+",
+      "unit": "problems",
+      "text": "LeetCode DSA problems solved and 45 Days Grind."
+    },
+    "create": {
+      "big": "Visuals",
+      "text": "AI visual design and digital storytelling."
+    }
   },
-  "learning": {"title": "Currently learning", "chips": ["Django", "API", "Building projects"]},
-  "stack": ["Java", "Python", "Android", "MySQL", "SQLite", "Firebase", "Tkinter", "Django (basics)"],
+  "learning": {
+    "title": "Currently learning",
+    "chips": [
+      "Django",
+      "API",
+      "Building projects"
+    ]
+  },
+  "stack": [
+    "Java",
+    "Python",
+    "Android",
+    "MySQL",
+    "SQLite",
+    "Firebase",
+    "Tkinter",
+    "Django (basics)"
+  ],
   "workflow": [
     {
       "num": "01",
       "title": "IDEATE",
       "desc": "Discuss ideas, explore possibilities, understand requirements, and define the intended outcome.",
-      "tools": ["ChatGPT", "Claude"],
+      "tools": [
+        "ChatGPT",
+        "Claude"
+      ],
       "color": "amber"
     },
     {
       "num": "02",
       "title": "PLAN",
       "desc": "Research solutions, break down requirements, compare approaches, and finalize the technology stack.",
-      "tools": ["ChatGPT", "Claude"],
+      "tools": [
+        "ChatGPT",
+        "Claude"
+      ],
       "color": "cobalt"
     },
     {
       "num": "03",
       "title": "BUILD",
       "desc": "Create initial prototypes, generate implementations, and develop project features with AI coding assistance.",
-      "tools": ["Codex", "Google Antigravity"],
+      "tools": [
+        "Codex",
+        "Google Antigravity"
+      ],
       "color": "green"
     },
     {
@@ -48,8 +87,29 @@
     }
   ],
   "projects": [
-    {"name": "Pixault", "slug": "pixault", "desc": "Java desktop vault with AES-256 encryption and image steganography.", "tag": "Desktop app", "color": "green", "repo": ""},
-    {"name": "Order-Manager", "slug": "order-manager", "desc": "Android retail order app with offline-first SQLite and Firebase sync.", "tag": "Android app", "color": "red", "repo": ""},
-    {"name": "EmployeeManagementSystem", "slug": "employee-management", "desc": "Modular Python application with MySQL and Tkinter.", "tag": "Python app", "color": "yellow", "repo": ""}
+    {
+      "name": "Pixault",
+      "slug": "pixault",
+      "desc": "Java desktop vault with AES-256 encryption and image steganography.",
+      "tag": "Desktop app",
+      "color": "green",
+      "repo": "https://github.com/tarun-suthar-04/Project_Pixault"
+    },
+    {
+      "name": "Order-Manager",
+      "slug": "order-manager",
+      "desc": "Android retail order app with offline-first SQLite and Firebase sync.",
+      "tag": "Android app",
+      "color": "red",
+      "repo": "https://github.com/tarun-suthar-04/Order-Manager"
+    },
+    {
+      "name": "EmployeeManagementSystem",
+      "slug": "employee-management",
+      "desc": "Modular Python application with MySQL and Tkinter.",
+      "tag": "Python app",
+      "color": "yellow",
+      "repo": "https://github.com/tarun-suthar-04/EmployeeManagementSystem"
+    }
   ]
 }
