@@ -1,0 +1,15 @@
+{
+  "name": "tarun-suthar-profile-preview",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive preview for Tarun Suthar's GitHub profile SVG cards",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node --check server.js",
+    "lint": "node --check server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
