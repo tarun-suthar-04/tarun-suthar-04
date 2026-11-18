@@ -1,0 +1,30 @@
+{
+  "username": "tarun-suthar-04",
+  "name": ["Tarun", "Suthar"],
+  "label": "AI-assisted developer",
+  "tagline": "Building secure Java, Android, and Python applications, with AI-assisted workflows.",
+  "links": {
+    "portfolio": "https://portfoliotv.vercel.app",
+    "linkedin": "https://www.linkedin.com/in/tarun-suthar-307838266",
+    "email": "",
+    "resume": "",
+    "leetcode": ""
+  },
+  "tiles": {
+    "build": {"big": "3", "unit": "apps", "text": "Pixault security vault, Order Manager retail app, and Employee Management."},
+    "solve": {"big": "120+", "unit": "problems", "text": "LeetCode DSA problems solved and 45 Days Grind."},
+    "create": {"big": "Visuals", "text": "AI visual design and digital storytelling."}
+  },
+  "education": {"degree": "M.Sc. Computer Science", "score": "8.58", "scoreLabel": "CGPA"},
+  "learning": {"title": "Django, API & building projects", "chips": ["Django", "API", "Building projects"]},
+  "stack": ["Java", "Python", "Android", "MySQL", "SQLite", "Firebase", "Tkinter", "Django (basics)"],
+  "howIWork": {
+    "text": "I'm an AI-assisted developer. Once I have an idea, I use AI to design, prototype, and build it, with",
+    "tools": ["Claude", "Codex", "ChatGPT", "Antigravity"]
+  },
+  "projects": [
+    {"name": "Pixault", "slug": "pixault", "desc": "Java desktop vault with AES-256 encryption and image steganography.", "tag": "Desktop app", "color": "green", "repo": ""},
+    {"name": "Order-Manager", "slug": "order-manager", "desc": "Android retail order app with offline-first SQLite and Firebase sync.", "tag": "Android app", "color": "red", "repo": ""},
+    {"name": "EmployeeManagementSystem", "slug": "employee-management", "desc": "Modular Python application with MySQL and Tkinter.", "tag": "Python app", "color": "yellow", "repo": ""}
+  ]
+}

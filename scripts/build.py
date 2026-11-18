@@ -1,0 +1,428 @@
+#!/usr/bin/env python3
+"""Generates every SVG card (light + dark), README.md and preview.html
+from profile.config.json. No third-party dependencies.
+
+Usage:  python scripts/build.py
+Env:    GITHUB_TOKEN  -> fetch real contributions (otherwise sample data is used)
+"""
+import base64, datetime as dt, json, math, os, sys, textwrap, urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+CFG = json.loads((ROOT / "profile.config.json").read_text(encoding="utf-8"))
+USER = CFG["username"]
+PROFILE_URL = f"https://github.com/{USER}"
+
+HEAD = "Inter,'Arial Black',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif"
+MONO = "'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+
+LIGHT = dict(card="#FFFFFF", card2="#FAFAFA", border="#111111", shadow="#111111",
+             text="#111111", muted="#555555", green="#0F5C3F", red="#C62020",
+             yellow="#FFC400", soft="#FFF4D0", gbar="#D5D9DC", grid="#BFC5CB",
+             heat=["#FFFFFF", "#BFE5CC", "#7FCB9B", "#2E8B57", "#0F5C3F"],
+             heatstroke="#0F5C3F", chip="#FFFFFF", chiptext="#111111")
+DARK = dict(card="#12171D", card2="#12171D", border="#E6EDF3", shadow="#E6EDF3",
+            text="#F0F6FC", muted="#9BA7B4", green="#2FB67C", red="#EF4444",
+            yellow="#FFC400", soft="#2A2410", gbar="#2B333C", grid="#2B333C",
+            heat=["#1B222A", "#14532D", "#1F8A4C", "#3FD97F", "#7CF0A8"],
+            heatstroke="#3FD97F", chip="#1B222A", chiptext="#F0F6FC")
+# tiles / highlights keep the same bold colours in both modes
+TILE_GREEN, TILE_RED, TILE_YELLOW, INK = "#0F5C3F", "#C62020", "#FFC400", "#111111"
+
+# ------------------------------------------------------------------ helpers
+def esc(s):
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+def est(s, size, k=0.56):
+    return len(s) * size * k
+
+def T(x, y, s, size, fill, weight=400, fam=MONO, ls=0, anchor="start", tl=None):
+    a = f'x="{x:.1f}" y="{y:.1f}" font-family="{fam}" font-size="{size}" font-weight="{weight}" fill="{fill}"'
+    if ls: a += f' letter-spacing="{ls}"'
+    if anchor != "start": a += f' text-anchor="{anchor}"'
+    if tl: a += f' textLength="{tl:.1f}" lengthAdjust="spacingAndGlyphs"'
+    return f"<text {a}>{esc(s)}</text>"
+
+def H(x, y, s, size, fill, maxw=None, weight=800, anchor="start"):
+    """Headline with textLength so it fits regardless of the fallback font."""
+    w = est(s, size, 0.55)
+    if maxw: w = min(w, maxw)
+    return T(x, y, s, size, fill, weight, HEAD, -size * 0.03, anchor, tl=w), w
+
+def label(x, y, s, fill, dot, size=21):
+    return (f'<rect x="{x}" y="{y-14}" width="14" height="14" fill="{dot}"/>' +
+            T(x + 26, y, s.upper(), size, fill, 500, MONO, 3))
+
+def arrow(x, y, s, color, sw=3):
+    return (f'<path d="M{x},{y+s} L{x+s},{y} M{x+s*0.2},{y} H{x+s} V{y+s*0.8}" '
+            f'fill="none" stroke="{color}" stroke-width="{sw}" stroke-linecap="square"/>')
+
+def wrap(s, n):
+    return textwrap.wrap(s, n)
+
+def svg(w, h, body, title):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:g} {h:g}" '
+            f'width="{w:g}" height="{h:g}" role="img" aria-label="{esc(title)}">'
+            f'<title>{esc(title)}</title>{body}</svg>')
+
+def card(w, h, fill, t, pad=48, sw=3, stroke=None, shadow=None):
+    """Neo-brutalist card. 12-unit transparent gutter right/bottom holds the shadow."""
+    bw, bh = w - 18, h - 18
+    shadow = shadow or t["shadow"]
+    stroke = stroke or t["border"]
+    body = (f'<rect x="15" y="15" width="{bw:g}" height="{bh:g}" fill="{shadow}"/>'
+            f'<rect x="3" y="3" width="{bw:g}" height="{bh:g}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>')
+    return body, pad, w - 18 - (pad - 3)
+
+# ------------------------------------------------------------ contribution data
+def load_contributions():
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_PAT")
+    if token:
+        try:
+            end = dt.date.today()
+            frm = end - dt.timedelta(days=364)
+            q = ("query($u:String!,$f:DateTime!,$t:DateTime!){user(login:$u){contributionsCollection(from:$f,to:$t)"
+                 "{contributionCalendar{weeks{contributionDays{date contributionCount}}}}}}")
+            payload = json.dumps({"query": q, "variables": {
+                "u": USER, "f": frm.isoformat() + "T00:00:00Z", "t": end.isoformat() + "T23:59:59Z"}}).encode()
+            req = urllib.request.Request("https://api.github.com/graphql", payload,
+                                         {"Authorization": f"bearer {token}", "Content-Type": "application/json"})
+            data = json.load(urllib.request.urlopen(req, timeout=30))
+            weeks = data["data"]["user"]["contributionsCollection"]["contributionCalendar"]["weeks"]
+            days = {d["date"]: d["contributionCount"] for w in weeks for d in w["contributionDays"]}
+            print("Using live GitHub data")
+            return end, days
+        except Exception as e:  # fall back to sample
+            print("GraphQL failed, using sample data:", e, file=sys.stderr)
+    s = json.loads((ROOT / "data" / "sample-contributions.json").read_text())
+    print("Using sample data (placeholder for local preview)")
+    return dt.date.fromisoformat(s["end"]), s["days"]
+
+def stats(end, days):
+    cnt = lambda d: days.get(d.isoformat(), 0)
+    start = end - dt.timedelta(days=364)
+    win = [start + dt.timedelta(days=i) for i in range(365)]
+    total = sum(cnt(d) for d in win)
+    active = sum(1 for d in win if cnt(d) > 0)
+    busiest = max(cnt(d) for d in win)
+    d = end if cnt(end) > 0 else end - dt.timedelta(days=1)
+    cur = 0
+    while cnt(d) > 0 and d >= start:
+        cur += 1; d -= dt.timedelta(days=1)
+    longest = run = 0
+    for d in win:
+        run = run + 1 if cnt(d) > 0 else 0
+        longest = max(longest, run)
+    months = []
+    y, m = end.year, end.month
+    for _ in range(12):
+        months.append((y, m)); m -= 1
+        if m == 0: y, m = y - 1, 12
+    months.reverse()
+    mt = [sum(c for k, c in days.items() if k[:7] == f"{y}-{m:02d}") for y, m in months]
+    names = [dt.date(y, m, 1).strftime("%b") for y, m in months]
+    return dict(total=total, active=active, busiest=busiest, cur=cur, longest=longest, mt=mt, names=names)
+
+# ------------------------------------------------------------------ cards
+def hero(t, dark):
+    w, h = 1000, 520
+    b, ix, ir = card(w, h, t["card2"], t)
+    b += label(ix, 66, "01 Profile", t["text"], TILE_RED)
+    n1, n2 = CFG["name"]
+    s1, w1 = H(ix, 175, n1, 110, t["text"])
+    w2 = est(n2, 110, 0.55)
+    b += s1
+    b += f'<rect x="{ix-4}" y="190" width="{w2+30:.1f}" height="124" fill="{TILE_YELLOW}" stroke="{INK}" stroke-width="3"/>'
+    b += T(ix + 11, 295, n2, 110, INK, 800, HEAD, -3.3, tl=w2)
+    b += T(ix, 362, CFG["label"], 24, t["text"], 700, MONO)
+    for i, ln in enumerate(wrap(CFG["tagline"], 36)):
+        b += T(ix, 402 + i * 36, ln, 28, t["text"], 400, HEAD)
+    # illustration box
+    bx, by, bw, bh = 600, 42, 340, 430
+    b += f'<rect x="{bx}" y="{by}" width="{bw}" height="{bh}" rx="28" fill="#F3F1E7" stroke="{t["border"]}" stroke-width="3"/>'
+    p = ROOT / "assets" / "hero.png"
+    if p.exists():
+        uri = base64.b64encode(p.read_bytes()).decode()
+        b += (f'<image x="{bx+14}" y="{by+14}" width="{bw-28}" height="{bh-28}" preserveAspectRatio="xMidYMid meet" '
+              f'href="data:image/png;base64,{uri}"/>')
+    else:
+        b += (f'<rect x="680" y="130" width="180" height="130" fill="{INK}" stroke="{INK}" stroke-width="12"/>'
+              f'<rect x="750" y="272" width="40" height="30" fill="{INK}"/><rect x="725" y="300" width="90" height="14" fill="{INK}"/>'
+              + T(695, 170, "while True:", 20, "#7CF0A8") + T(695, 200, "build()", 20, TILE_YELLOW) + T(695, 230, "AI { }", 20, "#FFFFFF"))
+    return svg(w, h, b, "Tarun Suthar, AI-assisted developer. Building secure Java, Android, and Python applications.")
+
+def heatmap(t, dark, end, days):
+    w, h = 1000, 360
+    b, ix, ir = card(w, h, t["card"], t)
+    b += label(ix, 66, "02 Activity · refreshed daily", t["text"], TILE_RED)
+    s, ww = H(ix, 135, "Building ", 52, t["text"])
+    b += (f'<text x="{ix}" y="135" font-family="{HEAD}" font-size="52" font-weight="800" letter-spacing="-1.5" fill="{t["text"]}">'
+          f'Building <tspan fill="{t["green"]}">in public</tspan></text>')
+    start = end - dt.timedelta(days=364)
+    start -= dt.timedelta(days=(start.weekday() + 1) % 7)
+    pitch, cs = 16.4, 14
+    lvl = lambda c: 0 if c == 0 else 1 if c < 3 else 2 if c < 6 else 3 if c < 10 else 4
+    gy = 172
+    for i in range((end - start).days + 1):
+        d = start + dt.timedelta(days=i)
+        col, row = i // 7, i % 7
+        l = lvl(days.get(d.isoformat(), 0))
+        stroke = t["grid"] if l == 0 else t["heatstroke"]
+        b += (f'<rect x="{ix + col*pitch:.1f}" y="{gy + row*pitch:.1f}" width="{cs}" height="{cs}" '
+              f'fill="{t["heat"][l]}" stroke="{stroke}" stroke-width="1.5"/>')
+    # legend
+    lx = ir - 5 * 20 - 140
+    b += T(lx, 326, "less", 18, t["muted"])
+    for i in range(5):
+        b += (f'<rect x="{lx+60+i*22}" y="312" width="16" height="16" fill="{t["heat"][i]}" '
+              f'stroke="{t["grid"] if i==0 else t["heatstroke"]}" stroke-width="1.5"/>')
+    b += T(lx + 60 + 5 * 22 + 4, 326, "more", 18, t["muted"])
+    return svg(w, h, b, f"GitHub contribution heatmap for the last 12 months, building in public.")
+
+def stats_card(t, dark, S):
+    w, h = 1000, 520
+    b, ix, ir = card(w, h, t["card2"], t)
+    b += label(ix, 66, "Contributions · last 12 months", t["text"], TILE_RED)
+    tot = str(S["total"])
+    sh, tw = H(ix, 190, tot, 120, t["text"])
+    b += sh + T(ix, 236, "contributions", 26, t["text"], 500, HEAD)
+    # bars
+    mt, names = S["mt"], S["names"]
+    mx = max(mt) or 1
+    top2 = sorted(range(12), key=lambda i: -mt[i])[0]
+    base, maxh, pitch, bw = 455, 190, 42.5, 34
+    for i, v in enumerate(mt):
+        bh = max(8, v / mx * maxh)
+        col = t["gbar"]
+        if i == top2: col = TILE_RED if t is LIGHT else t["red"]
+        if i == 11: col = t["green"]
+        x = ix + i * pitch
+        b += f'<rect x="{x:.1f}" y="{base-bh:.1f}" width="{bw}" height="{bh:.1f}" fill="{col}"/>'
+        if v >= mx * 0.3 and v > 0:
+            b += T(x + bw / 2, base - bh - 10, str(v), 20, t["text"], 600, MONO, anchor="middle")
+        b += T(x + bw / 2, 490, names[i], 16, t["text"], 400, MONO, anchor="middle")
+    # right column
+    rx = 620
+    def block(y, num, unit, cap):
+        out, nw = "", 0
+        sh, nw = H(rx, y, num, 72, t["text"])
+        out += sh + T(rx + nw + 14, y, unit, 26, t["text"], 500, HEAD)
+        out += T(rx, y + 40, cap, 20, t["muted"], 400, MONO)
+        return out
+    b += block(140, str(S["cur"]), "days", f'current streak · longest {S["longest"]}')
+    b += f'<line x1="{rx}" y1="212" x2="{ir}" y2="212" stroke="{t["border"]}" stroke-width="2"/>'
+    b += block(290, str(S["active"]), "/ 365", "days with a commit")
+    b += f'<line x1="{rx}" y1="362" x2="{ir}" y2="362" stroke="{t["border"]}" stroke-width="2"/>'
+    b += block(440, str(S["busiest"]), "", "on the busiest day")
+    return svg(w, h, b, f'{S["total"]} contributions in the last 12 months, current streak {S["cur"]} days, longest {S["longest"]}, {S["active"]} of 365 days with a commit, busiest day {S["busiest"]}.')
+
+def tile(kind, t, dark):
+    w, h = 333.33, 400
+    c = CFG["tiles"][kind]
+    fill, fg = {"build": (TILE_GREEN, "#FFFFFF"), "solve": (TILE_RED, "#FFFFFF"), "create": (TILE_YELLOW, INK)}[kind]
+    b, ix, ir = card(w, h, fill, t, pad=32, stroke=t["border"])
+    b += T(ix, 66, kind.upper(), 21, fg, 500, MONO, 4)
+    b += f'<rect x="{ir-44}" y="38" width="44" height="44" fill="none" stroke="{fg}" stroke-width="2" opacity="0.8"/>'
+    b += arrow(ir - 30, 51, 16, fg, 2.5)
+    if kind == "create":
+        sh, _ = H(ix, 175, c["big"], 74, fg, maxw=ir - ix)
+        b += sh
+        y = 232
+    else:
+        sh, nw = H(ix, 180, c["big"], 66, fg)
+        b += sh + T(ix + nw + 10, 180, c["unit"], 22, fg, 700, HEAD)
+        y = 240
+    for i, ln in enumerate(wrap(c["text"], 23)):
+        b += T(ix, y + i * 30, ln, 21, fg, 400, HEAD)
+    if kind == "create":
+        cy = 322
+        b += f'<rect x="{ix}" y="{cy}" width="248" height="46" fill="#FFFFFF" stroke="{INK}" stroke-width="3"/>'
+        b += T(ix + 16, cy + 31, "VIEW PORTFOLIO", 19, INK, 700, MONO, 1) + arrow(ix + 212, cy + 15, 14, INK, 2.5)
+    u = c.get("unit", "")
+    titles = {k2: f'{k2.capitalize()}: {c["big"]} {u}'.replace("  ", " ").strip() + f'. {c["text"]}' for k2 in ("build", "solve", "create")}
+    return svg(w, h, b, titles[kind])
+
+def education(t, dark):
+    w, h = 500, 300
+    e = CFG["education"]
+    b, ix, ir = card(w, h, t["card"], t, pad=40)
+    b += label(ix, 64, "Education", t["text"], TILE_GREEN if not dark else t["green"])
+    sh, _ = H(ix, 135, e["degree"], 34, t["text"], maxw=ir - ix)
+    b += sh
+    sh, nw = H(ix, 232, e["score"], 92, t["text"])
+    b += sh + T(ix + nw + 14, 232, e["scoreLabel"], 32, t["text"], 700, HEAD)
+    return svg(w, h, b, f'Education: {e["degree"]}, {e["score"]} {e["scoreLabel"]}.')
+
+def learning(t, dark):
+    w, h = 500, 300
+    L = CFG["learning"]
+    b, ix, ir = card(w, h, t["soft"], t, pad=40)
+    b += label(ix, 64, "Currently learning", t["text"], TILE_YELLOW)
+    for i, ln in enumerate(wrap(L["title"], 20)):
+        sh, _ = H(ix, 125 + i * 44, ln, 36, t["text"], maxw=ir - ix)
+        b += sh
+    x, y = ix, 205
+    for chip in L["chips"]:
+        cw = est(chip, 17, 0.6) + 26
+        if x + cw > ir + 4: x, y = ix, y + 56
+        b += (f'<rect x="{x+4}" y="{y+4}" width="{cw:.1f}" height="40" fill="{INK}"/>'
+              f'<rect x="{x}" y="{y}" width="{cw:.1f}" height="40" fill="{TILE_YELLOW}" stroke="{INK}" stroke-width="2.5"/>'
+              + T(x + 14, y + 27, chip, 17, INK, 700, MONO))
+        x += cw + 14
+    return svg(w, h, b, "Currently learning: " + ", ".join(L["chips"]) + ".")
+
+def tech(t, dark):
+    w, h = 1000, 330
+    b, ix, ir = card(w, h, t["card"], t)
+    b += label(ix, 66, "Tech stack", t["text"], TILE_RED)
+    sh, _ = H(ix, 135, "What I use", 56, t["text"])
+    b += sh
+    x, y = ix, 175
+    for s in CFG["stack"]:
+        cw = est(s, 21, 0.6) + 34
+        if x + cw > ir: x, y = ix, y + 62
+        b += (f'<rect x="{x+4}" y="{y+4}" width="{cw:.1f}" height="46" fill="{t["shadow"]}"/>'
+              f'<rect x="{x}" y="{y}" width="{cw:.1f}" height="46" fill="{t["chip"]}" stroke="{t["border"]}" stroke-width="2.5"/>'
+              + T(x + cw / 2, y + 31, s, 21, t["chiptext"], 700, MONO, anchor="middle"))
+        x += cw + 18
+    return svg(w, h, b, "Tech stack: " + ", ".join(CFG["stack"]) + ".")
+
+def how(t, dark):
+    w, h = 1000, 330
+    H_ = CFG["howIWork"]
+    b, ix, ir = card(w, h, t["card"], t)
+    b += label(ix, 66, "How I work", t["text"], TILE_GREEN if not dark else t["green"])
+    lines = wrap(H_["text"] + " …", 62)
+    lines[-1] = lines[-1].rstrip(" …").rstrip(",") + ":"
+    y = 122
+    for ln in lines:
+        b += T(ix, y, ln, 29, t["text"], 400, HEAD); y += 42
+    x, y = ix, y + 6
+    for tool in H_["tools"]:
+        cw = est(tool, 26, 0.6) + 32
+        b += (f'<rect x="{x}" y="{y}" width="{cw:.1f}" height="50" fill="{TILE_YELLOW}"/>'
+              + T(x + cw / 2, y + 35, tool, 26, INK, 700, HEAD, anchor="middle"))
+        x += cw + 18
+    return svg(w, h, b, "How I work: " + H_["text"] + " " + ", ".join(H_["tools"]) + ".")
+
+def coding_label(t, dark):
+    w, h = 1000, 70
+    b = label(8, 46, "What I'm coding", t["text"], TILE_RED)
+    return svg(w, h, b, "What I'm coding")
+
+def project(p, t, dark):
+    w, h = 333.33, 340
+    col = {"green": t["green"] if dark else TILE_GREEN, "red": t["red"] if dark else TILE_RED, "yellow": TILE_YELLOW}[p["color"]]
+    b, ix, ir = card(w, h, t["card"], t, pad=30)
+    b += f'<rect x="{ix}" y="52" width="16" height="16" fill="{col}"/>'
+    size = min(34, (ir - ix - 26) / (len(p["name"]) * 0.56))
+    sh, _ = H(ix + 28, 69, p["name"], round(size, 1), t["text"], maxw=ir - ix - 28)
+    b += sh
+    for i, ln in enumerate(wrap(p["desc"], 23)[:4]):
+        b += T(ix, 128 + i * 30, ln, 21, t["muted"], 400, HEAD)
+    cw = est(p["tag"], 17, 0.6) + 24
+    b += f'<rect x="{ix}" y="272" width="{cw:.1f}" height="36" fill="none" stroke="{t["border"]}" stroke-width="2"/>'
+    b += T(ix + 12, 296, p["tag"], 17, t["text"], 500, MONO)
+    rx = ir - est("README", 17, 0.6) - 28
+    b += T(rx, 296, "README", 17, t["text"], 700, MONO) + arrow(ir - 20, 281, 14, t["text"], 2.5)
+    b += f'<line x1="{rx}" y1="302" x2="{ir}" y2="302" stroke="{t["text"]}" stroke-width="2"/>'
+    return svg(w, h, b, f'{p["name"]}: {p["desc"]} ({p["tag"]}). Opens the repository.')
+
+def contact_header(t, dark):
+    w, h = 1000, 170
+    b = f'<rect width="{w}" height="{h}" fill="#000000"/>'
+    b += f'<rect x="36" y="42" width="14" height="14" fill="{TILE_RED}"/>' + T(62, 56, "CONTACT", 22, "#FFFFFF", 500, MONO, 3)
+    sh, _ = H(36, 132, "Let's talk", 64, "#FFFFFF")
+    return svg(w, h, b + sh, "Contact. Let's talk.")
+
+def contact_btn(name, filled, yellow, t, dark):
+    w, h = 200, 130
+    fill, shadow = (TILE_YELLOW, "#FFFFFF") if yellow else ("#FFFFFF", TILE_YELLOW)
+    b = f'<rect width="{w}" height="{h}" fill="#000000"/>'
+    b += f'<rect x="44" y="16" width="140" height="92" fill="{shadow}"/>'
+    b += f'<rect x="36" y="8" width="140" height="92" fill="{fill}" stroke="#000000" stroke-width="3"/>'
+    ty = 52 if filled else 46
+    b += T(106, ty, name.upper(), 19, INK, 700, MONO, 1, anchor="middle")
+    if not filled:
+        b += f'<rect x="76" y="62" width="60" height="22" fill="{TILE_YELLOW}" stroke="{INK}" stroke-width="2"/>'
+        b += T(106, 78, "TODO", 14, INK, 700, MONO, 1, anchor="middle")
+    else:
+        b += arrow(97, 66, 18, INK, 3)
+    return svg(w, h, b, f"{name} link" + ("" if filled else " (to be added)"))
+
+# ------------------------------------------------------------------ layout
+def href(v, mail=False):
+    if not v: return None
+    if mail and not v.startswith("mailto:"): return "mailto:" + v
+    return v
+
+def build():
+    end, days = load_contributions()
+    S = stats(end, days)
+    L = CFG["links"]
+    out = {}
+    def add(name, fn, *a):
+        for mode, tk in (("light", LIGHT), ("dark", DARK)):
+            d = ROOT / "assets" / mode; d.mkdir(parents=True, exist_ok=True)
+            (d / f"{name}.svg").write_text(fn(*a, tk, mode == "dark"), encoding="utf-8")
+    # remember: fn(*a, t, dark)
+    add("hero", lambda t, d: hero(t, d))
+    add("heatmap", lambda t, d: heatmap(t, d, end, days))
+    add("stats", lambda t, d: stats_card(t, d, S))
+    for k in ("build", "solve", "create"):
+        add(f"tile-{k}", lambda t, d, k=k: tile(k, t, d))
+    add("education", lambda t, d: education(t, d))
+    add("learning", lambda t, d: learning(t, d))
+    add("tech", lambda t, d: tech(t, d))
+    add("how-i-work", lambda t, d: how(t, d))
+    add("coding-label", lambda t, d: coding_label(t, d))
+    for p in CFG["projects"]:
+        add(f"project-{p['slug']}", lambda t, d, p=p: project(p, t, d))
+    add("contact-header", lambda t, d: contact_header(t, d))
+    btns = [("portfolio", "Portfolio", href(L["portfolio"]), True), ("linkedin", "LinkedIn", href(L["linkedin"]), False),
+            ("email", "Email", href(L["email"], True), False), ("resume", "Resume", href(L["resume"]), False),
+            ("leetcode", "LeetCode", href(L["leetcode"]), False)]
+    for key, nm, url, yel in btns:
+        add(f"contact-{key}", lambda t, d, nm=nm, url=url, yel=yel: contact_btn(nm, bool(url), yel, t, d))
+
+    repos = f"{PROFILE_URL}?tab=repositories"
+    # rows: list of (asset, width%, link, alt)
+    rows = [
+        [("hero", 100, L["portfolio"], "Tarun Suthar, AI-assisted developer building secure Java, Android and Python applications")],
+        [("heatmap", 100, PROFILE_URL, "Contribution heatmap, building in public")],
+        [("stats", 100, PROFILE_URL, f"{S['total']} contributions in the last 12 months with streak and activity stats")],
+        [("tile-build", 33.3, repos, "Build: 3 apps"), ("tile-solve", 33.3, href(L["leetcode"]) or PROFILE_URL, "Solve: 120+ LeetCode problems"),
+         ("tile-create", 33.3, L["portfolio"], "Create: AI visual design and digital storytelling")],
+        [("education", 50, None, f"Education: {CFG['education']['degree']}, {CFG['education']['score']} CGPA"),
+         ("learning", 50, None, "Currently learning: " + ", ".join(CFG["learning"]["chips"]))],
+        [("tech", 100, None, "Tech stack: " + ", ".join(CFG["stack"]))],
+        [("how-i-work", 100, None, "How I work: AI-assisted development with " + ", ".join(CFG["howIWork"]["tools"]))],
+        [("coding-label", 100, None, "What I'm coding")],
+        [(f"project-{p['slug']}", 33.3, p["repo"] or repos, f"{p['name']}: {p['desc']}") for p in CFG["projects"]],
+        [("contact-header", 100, None, "Contact. Let's talk.")],
+        [(f"contact-{k}", 20, (u or PROFILE_URL), f"{nm} link") for k, nm, u, _ in btns],
+    ]
+    def pic(prefix, name, w, link, alt):
+        img = (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{prefix}assets/dark/{name}.svg">'
+               f'<img src="{prefix}assets/light/{name}.svg" alt="{esc(alt)}" width="{w}%" align="top"></picture>')
+        return f'<a href="{link}">{img}</a>' if link else img
+    md = ["<!-- AUTO-GENERATED by scripts/build.py. Edit profile.config.json, then run: python scripts/build.py -->"]
+    for r in rows:
+        md.append("<div>" + "".join(pic("", *c) for c in r) + "</div>")
+    (ROOT / "README.md").write_text("\n\n".join(md) + "\n", encoding="utf-8")
+
+    # preview.html: light + dark shells (open in any browser, no server needed)
+    def block(bg, fg, cls):
+        inner = "".join("<div>" + "".join(
+            (f'<a href="{c[2]}">' if c[2] else "") +
+            f'<img src="assets/{cls}/{c[0]}.svg" alt="{esc(c[3])}" width="{c[1]}%" align="top" style="vertical-align:top">' +
+            ("</a>" if c[2] else "") for c in r) + "</div>" for r in rows)
+        return f'<section style="background:{bg};color:{fg};padding:16px;border:1px solid #8884;max-width:920px;margin:0 auto 24px">{inner}</section>'
+    html = ("<!doctype html><meta charset=utf-8><title>Profile preview</title><body style='margin:0;font:14px system-ui;background:#888'>"
+            "<h3 style='text-align:center;color:#fff'>Light mode</h3>" + block("#fff", "#000", "light") +
+            "<h3 style='text-align:center;color:#fff'>Dark mode</h3>" + block("#0D1117", "#fff", "dark"))
+    (ROOT / "preview.html").write_text(html, encoding="utf-8")
+    print("Built", sum(1 for _ in (ROOT / "assets").rglob("*.svg")), "SVGs + README.md + preview.html")
+
+if __name__ == "__main__":
+    build()
