@@ -1,9 +1,17 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Cache & AI Studio artifacts
+.aistudio/
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .env
+.env.local
 .venv
 env/
 venv/

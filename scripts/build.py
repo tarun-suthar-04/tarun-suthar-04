@@ -925,10 +925,10 @@ def how(t, dark):
 def coding_label(t, dark):
     w, h = 1000, 44
     defs = font_style("a700", "m400")
-    b = kicker(14, 28, "What i Built", t["muted"], t["red"], size=12)
+    b = kicker(14, 28, "What I Built", t["muted"], t["red"], size=12)
     b += T(w - 30, 28, "All Repositories", 13.5, t["secondary"], 600, HEAD, anchor="end")
     b += arrow_ne(w - 22, 18.5, 9, t["secondary"], sw=1.8)
-    return svg(w, h, defs, b, "What i Built")
+    return svg(w, h, defs, b, "What I Built")
 
 
 def project(p, t, dark):
@@ -1084,7 +1084,7 @@ def build():
         ],
         [("tech", 100, None, "Tech I use: " + ", ".join(CFG["stack"]) + ". Currently learning: " + ", ".join(CFG["learning"]["chips"]))],
         [("how-i-work", 100, None, "My Workflow: 01 Ideate, 02 Plan, 03 Build, 04 Refine")],
-        [("coding-label", 100, repos, "What i Built")],
+        [("coding-label", 100, repos, "What I Built")],
         [(f"project-{p['slug']}", 33.3, p["repo"] or repos, f"{p['name']}: {p['desc']}") for p in CFG["projects"]],
         [(f"contact-{k}", 25, (u or PROFILE_URL), f"{nm} link") for k, nm, u, _ in btns],
     ]
