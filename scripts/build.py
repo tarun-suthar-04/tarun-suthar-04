@@ -21,7 +21,7 @@ LIGHT = dict(card="#FFFFFF", card2="#FAFAFA", border="#111111", shadow="#111111"
              yellow="#FFC400", soft="#FFF4D0", gbar="#D5D9DC", grid="#BFC5CB",
              heat=["#FFFFFF", "#BFE5CC", "#7FCB9B", "#2E8B57", "#0F5C3F"],
              heatstroke="#0F5C3F", chip="#FFFFFF", chiptext="#111111")
-DARK = dict(card="#12171D", card2="#12171D", border="#E6EDF3", shadow="#E6EDF3",
+DARK = dict(card="#12171D", card2="#12171D", border="#E6EDF3", shadow="#8B949E",
             text="#F0F6FC", muted="#9BA7B4", green="#2FB67C", red="#EF4444",
             yellow="#FFC400", soft="#2A2410", gbar="#2B333C", grid="#2B333C",
             heat=["#1B222A", "#14532D", "#1F8A4C", "#3FD97F", "#7CF0A8"],
@@ -65,14 +65,15 @@ def svg(w, h, body, title):
             f'width="{w:g}" height="{h:g}" role="img" aria-label="{esc(title)}">'
             f'<title>{esc(title)}</title>{body}</svg>')
 
-def card(w, h, fill, t, pad=48, sw=3, stroke=None, shadow=None):
-    """Neo-brutalist card. 12-unit transparent gutter right/bottom holds the shadow."""
-    bw, bh = w - 18, h - 18
+def card(w, h, fill, t, pad=48, sw=2.5, stroke=None, shadow=None):
+    """Neo-brutalist card with reduced, crisp 5-unit drop shadow."""
+    offset = 5
+    bw, bh = w - (offset + 6), h - (offset + 6)
     shadow = shadow or t["shadow"]
     stroke = stroke or t["border"]
-    body = (f'<rect x="15" y="15" width="{bw:g}" height="{bh:g}" fill="{shadow}"/>'
+    body = (f'<rect x="{3+offset}" y="{3+offset}" width="{bw:g}" height="{bh:g}" fill="{shadow}"/>'
             f'<rect x="3" y="3" width="{bw:g}" height="{bh:g}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>')
-    return body, pad, w - 18 - (pad - 3)
+    return body, pad, int(bw + 3 - pad)
 
 # ------------------------------------------------------------ contribution data
 def load_contributions():
@@ -330,17 +331,20 @@ def how(t, dark):
     H_ = CFG["howIWork"]
     b, ix, ir = card(w, h, t["card"], t)
     b += label(ix, 66, "How I work", t["text"], TILE_GREEN if not dark else t["green"])
-    lines = wrap(H_["text"] + " …", 62)
-    lines[-1] = lines[-1].rstrip(" …").rstrip(",") + ":"
-    y = 122
+    # Clean text wrapping to 48 characters so text never exceeds card bounds
+    clean_text = H_["text"].rstrip(" ,…")
+    lines = wrap(clean_text, 48)
+    lines[-1] = lines[-1].rstrip(" ,") + ":"
+    y = 124
     for ln in lines:
-        b += T(ix, y, ln, 29, t["text"], 400, HEAD); y += 42
-    x, y = ix, y + 6
+        b += T(ix, y, ln, 25, t["text"], 400, HEAD)
+        y += 38
+    x, y = ix, y + 10
     for tool in H_["tools"]:
-        cw = est(tool, 26, 0.6) + 32
-        b += (f'<rect x="{x}" y="{y}" width="{cw:.1f}" height="50" fill="{TILE_YELLOW}"/>'
-              + T(x + cw / 2, y + 35, tool, 26, INK, 700, HEAD, anchor="middle"))
-        x += cw + 18
+        cw = est(tool, 22, 0.6) + 30
+        b += (f'<rect x="{x}" y="{y}" width="{cw:.1f}" height="46" fill="{TILE_YELLOW}"/>'
+              + T(x + cw / 2, y + 31, tool, 22, INK, 700, HEAD, anchor="middle"))
+        x += cw + 16
     return svg(w, h, b, "How I work: " + H_["text"] + " " + ", ".join(H_["tools"]) + ".")
 
 def coding_label(t, dark):
@@ -351,41 +355,61 @@ def coding_label(t, dark):
 def project(p, t, dark):
     w, h = 333.33, 340
     col = {"green": t["green"] if dark else TILE_GREEN, "red": t["red"] if dark else TILE_RED, "yellow": TILE_YELLOW}[p["color"]]
-    b, ix, ir = card(w, h, t["card"], t, pad=30)
-    b += f'<rect x="{ix}" y="52" width="16" height="16" fill="{col}"/>'
-    size = min(34, (ir - ix - 26) / (len(p["name"]) * 0.56))
-    sh, _ = H(ix + 28, 69, p["name"], round(size, 1), t["text"], maxw=ir - ix - 28)
-    b += sh
-    for i, ln in enumerate(wrap(p["desc"], 23)[:4]):
-        b += T(ix, 128 + i * 30, ln, 21, t["muted"], 400, HEAD)
-    cw = est(p["tag"], 17, 0.6) + 24
-    b += f'<rect x="{ix}" y="272" width="{cw:.1f}" height="36" fill="none" stroke="{t["border"]}" stroke-width="2"/>'
-    b += T(ix + 12, 296, p["tag"], 17, t["text"], 500, MONO)
-    rx = ir - est("README", 17, 0.6) - 28
-    b += T(rx, 296, "README", 17, t["text"], 700, MONO) + arrow(ir - 20, 281, 14, t["text"], 2.5)
-    b += f'<line x1="{rx}" y1="302" x2="{ir}" y2="302" stroke="{t["text"]}" stroke-width="2"/>'
+    b, ix, ir = card(w, h, t["card"], t, pad=26)
+    b += f'<rect x="{ix}" y="50" width="14" height="14" fill="{col}"/>'
+
+    # Split camelCase long names so headings have consistent, regular font size
+    import re
+    spaced_name = re.sub(r'([a-z])([A-Z])', r'\1 \2', p["name"])
+    title_lines = wrap(spaced_name, 20)
+
+    # Uniform 21px bold font for all project card headings
+    title_size = 21
+    if len(title_lines) == 1:
+        sh, _ = H(ix + 24, 63, title_lines[0], title_size, t["text"], maxw=ir - ix - 24)
+        b += sh
+        desc_start_y = 118
+    else:
+        sh1, _ = H(ix + 24, 63, title_lines[0], title_size, t["text"], maxw=ir - ix - 24)
+        sh2, _ = H(ix + 24, 88, title_lines[1], title_size, t["text"], maxw=ir - ix - 24)
+        b += sh1 + sh2
+        desc_start_y = 138
+
+    for i, ln in enumerate(wrap(p["desc"], 22)[:3]):
+        b += T(ix, desc_start_y + i * 28, ln, 19, t["muted"], 400, HEAD)
+
+    cw = est(p["tag"], 16, 0.6) + 20
+    b += f'<rect x="{ix}" y="278" width="{cw:.1f}" height="34" fill="none" stroke="{t["border"]}" stroke-width="2"/>'
+    b += T(ix + 10, 301, p["tag"], 16, t["text"], 500, MONO)
+    rx = ir - est("README", 16, 0.6) - 24
+    b += T(rx, 301, "README", 16, t["text"], 700, MONO) + arrow(ir - 18, 287, 13, t["text"], 2.2)
+    b += f'<line x1="{rx}" y1="306" x2="{ir}" y2="306" stroke="{t["text"]}" stroke-width="2"/>'
     return svg(w, h, b, f'{p["name"]}: {p["desc"]} ({p["tag"]}). Opens the repository.')
 
 def contact_header(t, dark):
     w, h = 1000, 170
-    b = f'<rect width="{w}" height="{h}" fill="#000000"/>'
-    b += f'<rect x="36" y="42" width="14" height="14" fill="{TILE_RED}"/>' + T(62, 56, "CONTACT", 22, "#FFFFFF", 500, MONO, 3)
-    sh, _ = H(36, 132, "Let's talk", 64, "#FFFFFF")
+    bg = "#12171D" if dark else "#FFFFFF"
+    fg = "#F0F6FC" if dark else "#111111"
+    b, ix, ir = card(w, h, bg, t, pad=36)
+    b += f'<rect x="{ix}" y="42" width="14" height="14" fill="{TILE_RED}"/>' + T(ix + 26, 56, "CONTACT", 22, fg, 500, MONO, 3)
+    sh, _ = H(ix, 132, "Let's talk.", 64, fg)
     return svg(w, h, b + sh, "Contact. Let's talk.")
 
 def contact_btn(name, filled, yellow, t, dark):
     w, h = 200, 130
-    fill, shadow = (TILE_YELLOW, "#FFFFFF") if yellow else ("#FFFFFF", TILE_YELLOW)
-    b = f'<rect width="{w}" height="{h}" fill="#000000"/>'
-    b += f'<rect x="44" y="16" width="140" height="92" fill="{shadow}"/>'
-    b += f'<rect x="36" y="8" width="140" height="92" fill="{fill}" stroke="#000000" stroke-width="3"/>'
+    bg = "#12171D" if dark else t["card"]
+    fill, shadow = (TILE_YELLOW, t["shadow"]) if yellow else (t["card"], TILE_YELLOW)
+    b = f'<rect width="{w}" height="{h}" fill="{bg}"/>'
+    b += f'<rect x="40" y="14" width="140" height="92" fill="{shadow}"/>'
+    b += f'<rect x="36" y="10" width="140" height="92" fill="{fill}" stroke="{t["border"]}" stroke-width="2.5"/>'
     ty = 52 if filled else 46
-    b += T(106, ty, name.upper(), 19, INK, 700, MONO, 1, anchor="middle")
+    btn_text = INK if yellow else t["text"]
+    b += T(106, ty, name.upper(), 19, btn_text, 700, MONO, 1, anchor="middle")
     if not filled:
-        b += f'<rect x="76" y="62" width="60" height="22" fill="{TILE_YELLOW}" stroke="{INK}" stroke-width="2"/>'
-        b += T(106, 78, "TODO", 14, INK, 700, MONO, 1, anchor="middle")
+        b += f'<rect x="58" y="66" width="96" height="22" fill="{TILE_YELLOW}" stroke="{INK}" stroke-width="1.5"/>'
+        b += T(106, 81, "COMING SOON", 11, INK, 700, MONO, anchor="middle")
     else:
-        b += arrow(97, 66, 18, INK, 3)
+        b += arrow(154, 22, 14, btn_text, 2.5)
     return svg(w, h, b, f"{name} link" + ("" if filled else " (to be added)"))
 
 # ------------------------------------------------------------------ layout
@@ -441,9 +465,10 @@ def build():
         [(f"contact-{k}", 20, (u or PROFILE_URL), f"{nm} link") for k, nm, u, _ in btns],
     ]
     def pic(prefix, name, w, link, alt):
+        # GitHub Markdown standard for dual light/dark SVGs:
+        # <source> provides dark-mode SVG; <img> provides light-mode default fallback
         img = (f'<picture>'
                f'<source media="(prefers-color-scheme: dark)" srcset="{prefix}assets/dark/{name}.svg">'
-               f'<source media="(prefers-color-scheme: light)" srcset="{prefix}assets/light/{name}.svg">'
                f'<img src="{prefix}assets/light/{name}.svg" alt="{esc(alt)}" width="{w}%" align="top">'
                f'</picture>')
         return f'<a href="{link}">{img}</a>' if link else img
@@ -477,9 +502,10 @@ def build():
     body {{
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      background: #1b1f24;
-      color: #e6edf3;
+      background: #f6f8fa;
+      color: #1f2328;
       padding-top: 64px;
+      transition: background 0.2s ease;
     }}
     .nav-bar {{
       position: fixed;
@@ -501,6 +527,7 @@ def build():
       display: flex;
       align-items: center;
       gap: 10px;
+      color: #f0f6fc;
     }}
     .nav-title span {{
       color: #7ee787;
@@ -553,7 +580,7 @@ def build():
     .card-shell {{
       border-radius: 12px;
       padding: 24px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
     }}
     .shell-light {{
       background: #ffffff;
@@ -587,34 +614,34 @@ def build():
       Tarun Suthar Profile <span>Live Preview</span>
     </div>
     <div class="btn-group">
-      <button id="btn-adaptive" onclick="setMode('adaptive')" class="active">Adaptive (Auto)</button>
-      <button id="btn-dark" onclick="setMode('dark')">Dark Mode</button>
-      <button id="btn-light" onclick="setMode('light')">Light Mode</button>
-      <button id="btn-split" onclick="setMode('split')">Side-by-Side</button>
+      <button id="btn-light" onclick="setMode('light')" class="active">☀️ Light Mode</button>
+      <button id="btn-dark" onclick="setMode('dark')">🌙 Dark Mode</button>
+      <button id="btn-split" onclick="setMode('split')">🌓 Side-by-Side</button>
+      <button id="btn-adaptive" onclick="setMode('adaptive')">⚙️ Adaptive (OS Theme)</button>
     </div>
   </div>
 
   <div id="view-single" class="preview-container">
-    <div id="target-shell" class="card-shell shell-dark">
+    <div id="target-shell" class="card-shell shell-light">
       <div class="shell-header">
-        <span id="shell-label">Adaptive Mode (&lt;picture&gt; elements)</span>
+        <span id="shell-label">☀️ Light Mode (assets/light/*.svg)</span>
         <span>GitHub Profile View</span>
       </div>
-      <div id="content-single">{adaptive_body}</div>
+      <div id="content-single">{light_body}</div>
     </div>
   </div>
 
   <div id="view-split" class="split-layout" style="display: none;">
     <div class="card-shell shell-light">
       <div class="shell-header">
-        <span>Light Mode</span>
+        <span>☀️ Light Mode</span>
         <span>assets/light/*.svg</span>
       </div>
       <div>{light_body}</div>
     </div>
     <div class="card-shell shell-dark">
       <div class="shell-header">
-        <span>Dark Mode</span>
+        <span>🌙 Dark Mode</span>
         <span>assets/dark/*.svg</span>
       </div>
       <div>{dark_body}</div>
@@ -640,6 +667,7 @@ def build():
       const content = document.getElementById('content-single');
 
       if (mode === 'split') {{
+        document.body.style.background = '#1b1f24';
         single.style.display = 'none';
         split.style.display = 'grid';
       }} else {{
@@ -648,14 +676,17 @@ def build():
         content.innerHTML = bodies[mode];
 
         if (mode === 'light') {{
+          document.body.style.background = '#f6f8fa';
           shell.className = 'card-shell shell-light';
-          label.textContent = 'Light Mode Preview';
+          label.textContent = '☀️ Light Mode (assets/light/*.svg)';
         }} else if (mode === 'dark') {{
+          document.body.style.background = '#010409';
           shell.className = 'card-shell shell-dark';
-          label.textContent = 'Dark Mode Preview';
+          label.textContent = '🌙 Dark Mode (assets/dark/*.svg)';
         }} else {{
+          document.body.style.background = '#0d1117';
           shell.className = 'card-shell shell-dark';
-          label.textContent = 'Adaptive Mode (Auto switches via prefers-color-scheme)';
+          label.textContent = '⚙️ Adaptive Mode (Auto switches via prefers-color-scheme)';
         }}
       }}
     }}
@@ -666,7 +697,7 @@ def build():
     # Also write a pkg/preview.html copy for backward compatibility
     pkg_dir = ROOT / "pkg"
     pkg_dir.mkdir(exist_ok=True)
-    pkg_html = html.replace('src="assets/', 'src="../assets/').replace('srcset="assets/', 'srcset="../assets/')
+    pkg_html = html.replace('assets/', '../assets/')
     (pkg_dir / "preview.html").write_text(pkg_html, encoding="utf-8")
     print("Built", sum(1 for _ in (ROOT / "assets").rglob("*.svg")), "SVGs + README.md + preview.html")
 
