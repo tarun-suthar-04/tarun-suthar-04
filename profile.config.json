@@ -74,7 +74,7 @@
       "desc": "Create initial prototypes, generate implementations, and develop project features with AI coding assistance.",
       "tools": [
         "Codex",
-        "Google Antigravity"
+        "Antigravity"
       ],
       "color": "green"
     },
@@ -82,7 +82,10 @@
       "num": "04",
       "title": "REFINE",
       "desc": "Test outputs, identify problems, improve functionality, and iterate until the result meets the requirements.",
-      "tools": [],
+      "tools": [
+        "Codex",
+        "Antigravity"
+      ],
       "color": "violet"
     }
   ],
