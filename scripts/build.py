@@ -136,8 +136,8 @@ LIGHT = dict(
     cube_hi="rgba(255,255,255,0.82)",
     cube_lo="rgba(15,23,42,0.07)",
     cube_stroke="rgba(255,255,255,0.72)",
-    heat=["#EEF2F6", "#BBF7D0", "#6EE7B7", "#10B981", "#065F46"],
-    heat_border="rgba(15,23,42,0.06)",
+    heat=["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
+    heat_border="rgba(27,31,35,0.06)",
     shadow_opacity="0.08",
     btn_bg="#0F172A",
     btn_fg="#FFFFFF",
@@ -166,8 +166,8 @@ DARK = dict(
     cube_hi="rgba(255,255,255,0.22)",
     cube_lo="rgba(0,0,0,0.42)",
     cube_stroke="rgba(255,255,255,0.14)",
-    heat=["#171E2B", "#064E3B", "#047857", "#10B981", "#4ADE80"],
-    heat_border="rgba(255,255,255,0.07)",
+    heat=["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
+    heat_border="rgba(255,255,255,0.05)",
     shadow_opacity="0.45",
     btn_bg="#F8FAFC",
     btn_fg="#0F172A",
@@ -371,7 +371,55 @@ def load_contributions():
                 pass
             return end, days
         except Exception as e:
-            print("GraphQL fetch failed, trying public API fallback:", e, file=sys.stderr)
+            print("GraphQL fetch failed, trying public profile fallback:", e, file=sys.stderr)
+
+    # Scrape GitHub public contributions endpoint (matches GitHub live calendar 1:1, no token needed)
+    try:
+        url = f"https://github.com/users/{USER}/contributions"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            html = resp.read().decode("utf-8")
+        tds = re.findall(
+            r'<td[^>]*id="(contribution-day-component-[^"]+)"[^>]*data-date="(\d{4}-\d{2}-\d{2})"[^>]*data-level="(\d+)"',
+            html,
+        )
+        if not tds:
+            tds = re.findall(
+                r'<td[^>]*data-date="(\d{4}-\d{2}-\d{2})"[^>]*id="(contribution-day-component-[^"]+)"[^>]*data-level="(\d+)"',
+                html,
+            )
+            tds = [(cid, d, lvl) for d, cid, lvl in tds]
+        tooltips = dict(
+            re.findall(
+                r'<tool-tip[^>]*for="(contribution-day-component-[^"]+)"[^>]*>(.*?)</tool-tip>',
+                html,
+                re.DOTALL,
+            )
+        )
+        days = {}
+        for cid, d, lvl in tds:
+            tip = tooltips.get(cid, "")
+            count_match = re.search(r'(\d+)\s+contribution', tip)
+            days[d] = int(count_match.group(1)) if count_match else 0
+        if days:
+            sorted_dates = sorted(days.keys())
+            fetch_end = dt.date.fromisoformat(sorted_dates[-1])
+            print("Using live GitHub data via public contributions page")
+            try:
+                (ROOT / "data" / "sample-contributions.json").write_text(
+                    json.dumps({"end": fetch_end.isoformat(), "days": days}, indent=1),
+                    encoding="utf-8",
+                )
+            except Exception:
+                pass
+            return fetch_end, days
+    except Exception as e:
+        print("Public profile endpoint unavailable, trying public API fallback:", e, file=sys.stderr)
 
     # Public contributions API fallback (no token required)
     try:
@@ -538,33 +586,54 @@ def heatmap(t, dark, end, days):
 
     start = end - dt.timedelta(days=364)
     start -= dt.timedelta(days=(start.weekday() + 1) % 7)
-    pitch, cs = 17.15, 13.6
-    lvl = lambda c: 0 if c == 0 else 1 if c < 3 else 2 if c < 6 else 3 if c < 10 else 4
-    gy = 104
-    active = sum(1 for i in range(365) if days.get((end - dt.timedelta(days=i)).isoformat(), 0) > 0)
+    gx, gy = 78, 110
+    pitch, cs = 16.5, 12.5
+    lvl = lambda c: 0 if c == 0 else 1 if c <= 2 else 2 if c <= 5 else 3 if c <= 7 else 4
 
-    for i in range((end - start).days + 1):
+    active = sum(1 for i in range(365) if days.get((end - dt.timedelta(days=i)).isoformat(), 0) > 0)
+    total = sum(days.get((end - dt.timedelta(days=i)).isoformat(), 0) for i in range(365))
+
+    # Weekday labels on the left (matching GitHub: Mon, Wed, Fri)
+    weekdays = [(1, "Mon"), (3, "Wed"), (5, "Fri")]
+    for r, name in weekdays:
+        wy = gy + r * pitch + 9.5
+        b += f'<text x="{px}" y="{wy:.1f}" font-family="{MONO}" font-size="10.5" font-weight="500" fill="{t["muted"]}">{name}</text>'
+
+    # Month labels above columns (matching GitHub calendar headers)
+    last_col = -5
+    num_days = (end - start).days + 1
+    num_cols = (num_days + 6) // 7
+    for col in range(num_cols):
+        first_d = start + dt.timedelta(days=col * 7)
+        if (col == 0 or first_d.day <= 7) and (col - last_col >= 3):
+            mx = gx + col * pitch
+            m_name = first_d.strftime("%b")
+            b += f'<text x="{mx:.1f}" y="98" font-family="{MONO}" font-size="11" font-weight="500" fill="{t["muted"]}">{m_name}</text>'
+            last_col = col
+
+    # Contribution grid
+    for i in range(num_days):
         d = start + dt.timedelta(days=i)
         col, row = i // 7, i % 7
         l = lvl(days.get(d.isoformat(), 0))
-        cx = px + col * pitch
+        cx = gx + col * pitch
         cy = gy + row * pitch
         b += (
-            f'<rect x="{cx:.1f}" y="{cy:.1f}" width="{cs}" height="{cs}" rx="3.5" '
+            f'<rect x="{cx:.1f}" y="{cy:.1f}" width="{cs}" height="{cs}" rx="2.5" '
             f'fill="{t["heat"][l]}" stroke="{t["heat_border"]}" stroke-width="1"/>'
         )
 
     # Footer
-    fy = 254
-    b += T(px, fy, f"Last 12 months · {active} active days", 12, t["muted"], 500, MONO)
-    lx = pr - 166
-    b += T(lx, fy, "less", 12, t["muted"], 500, MONO)
+    fy = 256
+    b += T(px, fy, f"Last 12 months · {active} active days ({total} contributions)", 12, t["muted"], 500, MONO)
+    lx = pr - 160
+    b += T(lx, fy, "Less", 12, t["muted"], 500, MONO)
     for i in range(5):
         b += (
-            f'<rect x="{lx+38+i*18}" y="{fy-11}" width="13" height="13" rx="3.2" '
+            f'<rect x="{lx+34+i*17}" y="{fy-10.5}" width="12" height="12" rx="2.5" '
             f'fill="{t["heat"][i]}" stroke="{t["heat_border"]}" stroke-width="1"/>'
         )
-    b += T(lx + 38 + 5 * 18 + 4, fy, "more", 12, t["muted"], 500, MONO)
+    b += T(lx + 34 + 5 * 17 + 4, fy, "More", 12, t["muted"], 500, MONO)
     b += br
     return svg(w, h, defs, b, "GitHub contribution heatmap for the last 12 months, building in public.")
 

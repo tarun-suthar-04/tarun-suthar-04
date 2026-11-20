@@ -1,7 +1,7 @@
 name: Update profile cards
 on:
   schedule:
-    - cron: "0 1 * * *"          # daily at 01:00 UTC
+    - cron: "0 */2 * * *"          # runs every 2 hours
   workflow_dispatch:              # manual "Run workflow" button
   push:
     branches:
@@ -11,7 +11,6 @@ on:
       - 'README.md'
       - 'preview.html'
       - 'pkg/**'
-      - 'data/**'
 
 permissions:
   contents: write
