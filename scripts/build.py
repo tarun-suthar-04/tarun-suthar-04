@@ -703,200 +703,192 @@ def tech(t, dark):
 
 
 def how(t, dark):
-    w, h = 1000, 618
+    w, h = 1000, 248
     steps = CFG["workflow"]
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=36, rx=24)
 
     accents = {
-        "amber": ("#D97706" if not dark else "#FBBF24", "rgba(245,158,11,0.13)", "rgba(245,158,11,0.36)"),
-        "cobalt": ("#2563EB" if not dark else "#38BDF8", "rgba(37,99,235,0.12)", "rgba(56,189,248,0.36)"),
-        "green": ("#059669" if not dark else "#34D399", "rgba(16,185,129,0.12)", "rgba(52,211,153,0.36)"),
-        "violet": ("#7C3AED" if not dark else "#A78BFA", "rgba(124,58,237,0.12)", "rgba(167,139,250,0.36)"),
+        "amber": {
+            "col": "#D97706" if not dark else "#FBBF24",
+            "tint": "rgba(217,119,6,0.12)" if not dark else "rgba(251,191,36,0.15)",
+            "ring": "rgba(217,119,6,0.28)" if not dark else "rgba(251,191,36,0.30)",
+        },
+        "cobalt": {
+            "col": "#0284C7" if not dark else "#38BDF8",
+            "tint": "rgba(2,132,199,0.12)" if not dark else "rgba(56,189,248,0.15)",
+            "ring": "rgba(2,132,199,0.28)" if not dark else "rgba(56,189,248,0.30)",
+        },
+        "green": {
+            "col": "#16A34A" if not dark else "#34D399",
+            "tint": "rgba(22,163,74,0.12)" if not dark else "rgba(52,211,153,0.15)",
+            "ring": "rgba(22,163,74,0.28)" if not dark else "rgba(52,211,153,0.30)",
+        },
+        "violet": {
+            "col": "#7C3AED" if not dark else "#A78BFA",
+            "tint": "rgba(124,58,237,0.12)" if not dark else "rgba(167,139,250,0.15)",
+            "ring": "rgba(124,58,237,0.28)" if not dark else "rgba(167,139,250,0.30)",
+        },
     }
 
     wf_css = """
     <style>
-      .wf-flow { stroke-dasharray: 6 8; animation: wfDash 1.4s linear infinite; }
-      .wf-ret  { stroke-dasharray: 5 7; animation: wfRet 1.8s linear infinite; }
-      .wf-spin { transform-box: fill-box; transform-origin: center; animation: wfSpin 6s linear infinite; }
-      .wf-spark { transform-box: fill-box; transform-origin: center; animation: wfSpark 2s ease-in-out infinite; }
-      .wf-packet { animation: wfPacket 8s cubic-bezier(.45,.05,.55,.95) infinite; }
-      .wf-s1 { animation: wfStep1 8s ease-in-out infinite; }
-      .wf-s2 { animation: wfStep2 8s ease-in-out infinite; }
-      .wf-s3 { animation: wfStep3 8s ease-in-out infinite; }
-      .wf-s4 { animation: wfStep4 8s ease-in-out infinite; }
-      .wf-ret-pulse { animation: wfRetPulse 8s ease-in-out infinite; }
-      @keyframes wfDash { to { stroke-dashoffset: -28; } }
-      @keyframes wfRet  { to { stroke-dashoffset: 24; } }
+      .wf-flow { animation: wfFlow 1.2s linear infinite; }
+      .wf-spin { transform-box: fill-box; transform-origin: center; animation: wfSpin 4s linear infinite; }
+      .wf-live { animation: wfPulse 2s ease-in-out infinite; }
+      .wf-node-on { opacity: 0; animation: wfActive 8s ease-in-out infinite; }
+      @keyframes wfFlow { to { stroke-dashoffset: -10; } }
       @keyframes wfSpin { to { transform: rotate(360deg); } }
-      @keyframes wfSpark { 0%,100% { transform: scale(1); opacity: .78; } 50% { transform: scale(1.12); opacity: 1; } }
-      @keyframes wfPacket {
-        0%, 17%  { transform: translateX(0px); opacity: 1; }
-        25%, 42% { transform: translateX(226px); opacity: 1; }
-        50%, 67% { transform: translateX(452px); opacity: 1; }
-        75%, 90% { transform: translateX(678px); opacity: 1; }
-        93%      { transform: translateX(678px); opacity: 0; }
-        97%      { transform: translateX(0px); opacity: 0; }
-        100%     { transform: translateX(0px); opacity: 1; }
+      @keyframes wfPulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+      @keyframes wfActive {
+        0%, 100% { opacity: 0; }
+        5%, 22%  { opacity: 1; }
+        30%      { opacity: 0; }
       }
-      @keyframes wfStep1 { 0%, 20% { opacity: 1; } 25%, 95% { opacity: 0.18; } 100% { opacity: 1; } }
-      @keyframes wfStep2 { 0%, 20% { opacity: 0.18; } 25%, 45% { opacity: 1; } 50%, 100% { opacity: 0.18; } }
-      @keyframes wfStep3 { 0%, 45% { opacity: 0.18; } 50%, 70% { opacity: 1; } 75%, 100% { opacity: 0.18; } }
-      @keyframes wfStep4 { 0%, 70% { opacity: 0.18; } 75%, 95% { opacity: 1; } 100% { opacity: 0.18; } }
-      @keyframes wfRetPulse { 0%, 84% { opacity: 0.22; } 91%, 97% { opacity: 0.95; } 100% { opacity: 0.22; } }
       @media (prefers-reduced-motion: reduce) {
-        .wf-flow, .wf-ret, .wf-spin, .wf-spark, .wf-packet, .wf-s1, .wf-s2, .wf-s3, .wf-s4, .wf-ret-pulse { animation: none; }
+        .wf-flow, .wf-spin, .wf-live, .wf-node-on { animation: none !important; }
+        .wf-node-on { opacity: 0.6; }
       }
     </style>
     """
+
     stops = [
-        ("0%", "#10B981", "0.28" if not dark else "0.22"),
-        ("55%", "#2563EB", "0.14"),
-        ("100%", "#8B5CF6", "0"),
+        ("0%", "#10B981", "0.20" if not dark else "0.16"),
+        ("45%", "#0284C7" if not dark else "#38BDF8", "0.10"),
+        ("100%", "#7C3AED" if not dark else "#A78BFA", "0"),
     ]
     defs += (
         font_style("a400", "a700", "m400")
-        + cubic_orb_defs("wf", w, h, t, "92%", "14%", "54%", stops, "880", "90", "320", "170")
+        + cubic_orb_defs("wf", w, h, t, "92%", "16%", "52%", stops, "900", "65", "300", "150")
         + wf_css
     )
 
     b = bg
-    b += cubic_orb_layer("wf", ix, iy, cw, ch, opacity=0.72 if not dark else 0.62)
-    b += kicker(px, 52, "My Workflow", t["muted"], t["green_bright"], size=12)
+    b += cubic_orb_layer("wf", ix, iy, cw, ch, opacity=0.78 if not dark else 0.64)
 
-    # Top animated SVG pipeline track
-    tx, ty, tw_box, th_box = px, 70, pr - px, 124
-    b += f'<rect x="{tx}" y="{ty}" width="{tw_box}" height="{th_box}" rx="18" fill="{t["subtle"]}" stroke="{t["border"]}" stroke-width="1"/>'
+    # Header Row: Kicker with live pulsing dot on left, loop status on right
+    b += f'<rect class="wf-live" x="{px}" y="21" width="7" height="7" rx="2" fill="{t["green_bright"]}"/>'
+    b += T(px + 14, 28, "MY WORKFLOW", 10.5, t["muted"], 700, MONO, ls=1.5)
 
-    nx_list = [160.0, 386.0, 612.0, 838.0]
-    ny = 124.0
-
-    # Return iteration arc (04 -> 01)
+    # Right indicator: iterates until done + spinning loop
     b += (
-        f'<path d="M 838 98 C 770 76, 228 76, 160 98" fill="none" stroke="{t["border_strong"]}" stroke-width="1.3"/>'
-        f'<path class="wf-ret wf-ret-pulse" d="M 838 98 C 770 76, 228 76, 160 98" fill="none" stroke="{accents["violet"][0]}" stroke-width="1.8" stroke-linecap="round"/>'
-        f'<path class="wf-ret-pulse" d="M 166 93 L 160 98 L 167 101" fill="none" stroke="{accents["violet"][0]}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
-    )
-
-    # Forward connectors between nodes
-    for i in range(3):
-        x1 = nx_list[i] + 32
-        x2 = nx_list[i + 1] - 32
-        mx_c = (x1 + x2) / 2
-        col = accents[steps[i]["color"]][0]
-        b += f'<line x1="{x1:.1f}" y1="{ny}" x2="{x2:.1f}" y2="{ny}" stroke="{t["border_strong"]}" stroke-width="1.5"/>'
-        b += f'<line class="wf-flow" x1="{x1:.1f}" y1="{ny}" x2="{x2:.1f}" y2="{ny}" stroke="{col}" stroke-width="2" stroke-linecap="round"/>'
-        b += f'<path d="M {mx_c-3:.1f} {ny-4.5:.1f} L {mx_c+3:.1f} {ny:.1f} L {mx_c-3:.1f} {ny+4.5:.1f}" fill="none" stroke="{t["muted"]}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
-
-    # Traveling glowing signal packet along the track
-    b += (
-        f'<g class="wf-packet">'
-        f'<circle cx="160" cy="{ny}" r="9" fill="{t["green_bright"]}" opacity="0.22"/>'
-        f'<circle cx="160" cy="{ny}" r="4.2" fill="{t["text"]}" stroke="{t["card"]}" stroke-width="1.5"/>'
+        f'<g transform="translate({pr-12} 24.5)">'
+        f'<g class="wf-spin" fill="none" stroke="{t["muted"]}" stroke-width="1.3" stroke-linecap="round">'
+        f'<path d="M 3.2 -1 a 3.2 3.2 0 1 0 .4 2.1"/>'
+        f'<path d="M 3.5 -4 v 3 h -3"/>'
+        f'</g>'
         f'</g>'
     )
+    b += T(pr - 22, 28, "iterates until done", 10.5, t["muted"], 600, MONO, anchor="end", ls=0.4)
 
-    # 4 Animated Node Badges + Captions
-    def node_icon(idx, cx, cy, col):
-        if idx == 0:  # 01 IDEATE: spark + bulb core
+    col_w = 217.0
+    gap = 20.0
+    node_cx = [px + i * (col_w + gap) + 19.0 for i in range(4)]
+
+    # Arched return iteration loop across the top (04 -> 01)
+    ret_path = f"M {node_cx[3]:.1f} 52 C 600 22, 200 22, {node_cx[0]:.1f} 52"
+    v_col = accents["violet"]["col"]
+    b += f'<path d="{ret_path}" fill="none" stroke="{t["border_strong"]}" stroke-opacity="0.55" stroke-width="1.3" stroke-dasharray="3 4" stroke-linecap="round"/>'
+    b += (
+        f'<circle r="2.8" fill="{v_col}" opacity="0">'
+        f'<animateMotion dur="8s" repeatCount="indefinite" path="{ret_path}" keyPoints="0;0;1;1" keyTimes="0;.78;.98;1" calcMode="linear"/>'
+        f'<animate attributeName="opacity" dur="8s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;.77;.79;.97;.99;1"/>'
+        f'</circle>'
+    )
+    b += f'<path d="M {node_cx[0]+6:.1f} 48 L {node_cx[0]:.1f} 52 L {node_cx[0]+7:.1f} 55" fill="none" stroke="{v_col}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>'
+
+    # 4 Node Icons
+    def render_icon(idx, cx, cy, col):
+        if idx == 0:  # 01 IDEATE: spark/idea bulb
             return (
-                f'<g class="wf-spark">'
-                f'<circle cx="{cx}" cy="{cy}" r="5.5" fill="none" stroke="{col}" stroke-width="1.8"/>'
-                f'<path d="M {cx} {cy-11} L {cx} {cy-8.5} M {cx-9.5} {cy-5.5} L {cx-7.5} {cy-4} M {cx+9.5} {cy-5.5} L {cx+7.5} {cy-4} M {cx-3} {cy+9} L {cx+3} {cy+9}" stroke="{col}" stroke-width="1.7" stroke-linecap="round"/>'
+                f'<g transform="translate({cx:.1f} {cy:.1f})" fill="none" stroke="{col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+                f'<circle cx="0" cy="-2" r="5"/>'
+                f'<path d="M -2.5 6 h 5 M -1.5 9 h 3 M -9 -2 h -1.5 M 9 -2 h 1.5 M -6.5 -8.5 l -1 -1 M 6.5 -8.5 l 1 -1"/>'
                 f'</g>'
             )
-        if idx == 1:  # 02 PLAN: blueprint branching nodes
+        if idx == 1:  # 02 PLAN: blueprint specs tree
             return (
-                f'<g>'
-                f'<path d="M {cx-6} {cy-5} L {cx+5} {cy-5} M {cx-6} {cy} L {cx+6} {cy} M {cx-6} {cy+5} L {cx+2} {cy+5}" stroke="{col}" stroke-width="1.8" stroke-linecap="round"/>'
-                f'<circle cx="{cx+7.5}" cy="{cy+5}" r="2.2" fill="{col}"/>'
+                f'<g transform="translate({cx:.1f} {cy:.1f})" fill="none" stroke="{col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+                f'<path d="M -6 -5 h 9 M -6 0 h 12 M -6 5 h 6"/>'
+                f'<circle cx="7" cy="5" r="1.4" fill="{col}" stroke="none"/>'
                 f'</g>'
             )
-        if idx == 2:  # 03 BUILD: code brackets < />
+        if idx == 2:  # 03 BUILD: code brackets < / >
             return (
-                f'<g>'
-                f'<path d="M {cx-4.5} {cy-5} L {cx-9.5} {cy} L {cx-4.5} {cy+5}" fill="none" stroke="{col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
-                f'<path d="M {cx+4.5} {cy-5} L {cx+9.5} {cy} L {cx+4.5} {cy+5}" fill="none" stroke="{col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
-                f'<path d="M {cx+1.8} {cy-6} L {cx-1.8} {cy+6}" fill="none" stroke="{col}" stroke-width="1.7" stroke-linecap="round"/>'
+                f'<g transform="translate({cx:.1f} {cy:.1f})" fill="none" stroke="{col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+                f'<path d="M -4 -5 l -5 5 5 5 M 4 -5 l 5 5 -5 5 M 1.5 -7.5 l -3 15"/>'
                 f'</g>'
             )
-        # 04 REFINE: spinning dual loop arrows
+        # 04 REFINE: loop cycle
         return (
-            f'<g class="wf-spin">'
-            f'<path d="M {cx-7} {cy-2} A 7.5 7.5 0 0 1 {cx+6.5} {cy-3.5}" fill="none" stroke="{col}" stroke-width="1.8" stroke-linecap="round"/>'
-            f'<path d="M {cx+4} {cy-6} L {cx+7} {cy-3.2} L {cx+4.2} {cy-0.8}" fill="none" stroke="{col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
-            f'<path d="M {cx+7} {cy+2} A 7.5 7.5 0 0 1 {cx-6.5} {cy+3.5}" fill="none" stroke="{col}" stroke-width="1.8" stroke-linecap="round"/>'
-            f'<path d="M {cx-4} {cy+6} L {cx-7} {cy+3.2} L {cx-4.2} {cy+0.8}" fill="none" stroke="{col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+            f'<g transform="translate({cx:.1f} {cy:.1f})" fill="none" stroke="{col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+            f'<path d="M 6.5 -2 a 6.5 6.5 0 1 0 .8 4.2"/>'
+            f'<path d="M 7 -8 v 6 h -6"/>'
             f'</g>'
         )
 
+    # 4 Steps Render
+    from textwrap import wrap
     for idx, st in enumerate(steps):
-        nx = nx_list[idx]
-        col, tint, ring_col = accents[st["color"]]
-        cls = f"wf-s{idx+1}"
-        b += f'<rect class="{cls}" x="{nx-28:.1f}" y="{ny-28:.1f}" width="56" height="56" rx="16" fill="{tint}" stroke="{col}" stroke-width="1.8"/>'
-        b += f'<rect x="{nx-23:.1f}" y="{ny-23:.1f}" width="46" height="46" rx="13" fill="{t["card"]}" stroke="{t["border_strong"]}" stroke-width="1"/>'
-        b += node_icon(idx, nx, ny, col)
-        b += T(nx, 174, f'{st["num"]} — {st["title"]}', 11.5, t["text"], 700, MONO, anchor="middle", ls=0.4)
+        col_x = px + idx * (col_w + gap)
+        cx = col_x + 19.0
+        cy = 56.0 + 19.0
+        ac = accents[st["color"]]
+        col = ac["col"]
+        tint = ac["tint"]
+        ring = ac["ring"]
+        delay = idx * 2.0
 
-    # 2x2 Balanced Step Cards
-    gap = 16.0
-    step_w = (pr - px - gap) / 2.0
-    step_h = 178.0
-    y0 = 210.0
+        # Connecting flow line to next node
+        if idx < 3:
+            x1 = col_x + 38.0 + 10.0
+            next_x = px + (idx + 1) * (col_w + gap)
+            x2 = next_x - 10.0
+            mx = (x1 + x2) / 2.0
+            b += f'<line x1="{x1:.1f}" y1="{cy:.1f}" x2="{x2:.1f}" y2="{cy:.1f}" stroke="{t["border_strong"]}" stroke-width="1.2" stroke-linecap="round"/>'
+            b += f'<line class="wf-flow" x1="{x1:.1f}" y1="{cy:.1f}" x2="{x2:.1f}" y2="{cy:.1f}" stroke="{col}" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="5 5"/>'
+            b += f'<path d="M {mx-3:.1f} {cy-4:.1f} L {mx+2:.1f} {cy:.1f} L {mx-3:.1f} {cy+4:.1f}" fill="none" stroke="{t["muted"]}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
 
-    for idx, st in enumerate(steps):
-        row_i, col_i = divmod(idx, 2)
-        sx = px + col_i * (step_w + gap)
-        sy = y0 + row_i * (step_h + gap)
-        col, tint, _ = accents[st["color"]]
-        cls = f"wf-s{idx+1}"
+        # Node Icon Box
+        b += f'<rect x="{col_x:.1f}" y="56" width="38" height="38" rx="11" fill="{t["subtle"]}" stroke="{t["border_strong"]}" stroke-width="1.2"/>'
+        # Animated active glow pulse
+        b += (
+            f'<g class="wf-node-on" style="animation-delay:{delay:.1f}s">'
+            f'<rect x="{col_x-3:.1f}" y="53" width="44" height="44" rx="14" fill="none" stroke="{ring}" stroke-width="1.5"/>'
+            f'<rect x="{col_x:.1f}" y="56" width="38" height="38" rx="11" fill="{tint}" stroke="{col}" stroke-width="1.6"/>'
+            f'</g>'
+        )
+        b += render_icon(idx, cx, cy, col)
 
-        # Card surface + animated active ring
-        b += f'<rect x="{sx:.1f}" y="{sy:.1f}" width="{step_w:.1f}" height="{step_h:.1f}" rx="16" fill="{t["subtle"]}" stroke="{t["border"]}" stroke-width="1"/>'
-        b += f'<rect class="{cls}" x="{sx:.1f}" y="{sy:.1f}" width="{step_w:.1f}" height="{step_h:.1f}" rx="16" fill="none" stroke="{col}" stroke-width="1.6"/>'
+        # Step Label: Dot + Title
+        b += f'<rect x="{col_x:.1f}" y="112" width="6" height="6" rx="1.8" fill="{col}"/>'
+        b += T(col_x + 13, 118, f'{st["num"]} — {st["title"]}', 11.5, t["text"], 700, MONO, ls=0.5)
 
-        ix0 = sx + 22
-        ix1 = sx + step_w - 22
+        # Description wrapped cleanly to 4 lines
+        lines = wrap(st["desc"], 33)[:4]
+        for li, ln in enumerate(lines):
+            b += T(col_x, 137 + li * 15.5, ln, 11.5, t["secondary"], 400, HEAD, ls=-0.35)
 
-        # Step Title + live step pulse dot
-        b += f'<rect x="{ix0:.1f}" y="{sy+21:.1f}" width="8" height="8" rx="2.5" fill="{col}"/>'
-        b += T(ix0 + 15, sy + 29, f'{st["num"]} — {st["title"]}', 12.5, t["text"], 700, MONO, ls=0.5)
-        b += f'<circle class="{cls}" cx="{ix1-6:.1f}" cy="{sy+25:.1f}" r="6.5" fill="{tint}" stroke="{col}" stroke-width="1"/>'
-        b += f'<circle cx="{ix1-6:.1f}" cy="{sy+25:.1f}" r="2.6" fill="{col}"/>'
-
-        # Quoted description
-        quoted = f'"{st["desc"]}"'
-        for li, ln in enumerate(wrap(quoted, 53)[:3]):
-            b += T(ix0, sy + 57 + li * 20, ln, 13.5, t["secondary"], 400, HEAD, ls=-0.35)
-
-        # Bottom divider + Tools / Iteration Loop
-        b += f'<line x1="{ix0:.1f}" y1="{sy+124:.1f}" x2="{ix1:.1f}" y2="{sy+124:.1f}" stroke="{t["border"]}" stroke-width="1"/>'
-        if st["tools"]:
-            b += T(ix0, sy + 151, "Tools:", 11.5, t["muted"], 600, MONO)
-            tx_cur = ix0 + 54
+        # Tools / Iteration Chips
+        if st.get("tools"):
+            cur_x = col_x
             for tool in st["tools"]:
-                pw = est(tool, 11.5, 0.60) + 26
-                b += f'<rect x="{tx_cur:.1f}" y="{sy+134:.1f}" width="{pw:.1f}" height="28" rx="8" fill="{t["pill"]}" stroke="{t["border_strong"]}" stroke-width="1"/>'
-                b += T(tx_cur + pw / 2, sy + 152, tool, 11.5, t["text"], 600, MONO, anchor="middle")
-                tx_cur += pw + 8
+                tw = est(tool, 10.5, 0.60) + 20.0
+                b += f'<rect x="{cur_x:.1f}" y="200" width="{tw:.1f}" height="23" rx="7" fill="{t["subtle"]}" stroke="{t["border_strong"]}" stroke-width="1"/>'
+                b += T(cur_x + tw / 2.0, 215.5, tool, 10.5, t["text"], 600, MONO, anchor="middle")
+                cur_x += tw + 6.0
         else:
-            # 04 — REFINE visual animated continuous loop track balancing the footer
-            ly = sy + 148
-            lx_a = ix0 + 4
-            lx_b = ix1 - 24
-            b += f'<line x1="{lx_a:.1f}" y1="{ly:.1f}" x2="{lx_b:.1f}" y2="{ly:.1f}" stroke="{t["border_strong"]}" stroke-width="1.5" stroke-linecap="round"/>'
-            b += f'<line class="wf-flow" x1="{lx_a:.1f}" y1="{ly:.1f}" x2="{lx_b:.1f}" y2="{ly:.1f}" stroke="{col}" stroke-width="2" stroke-linecap="round"/>'
-            for k in range(4):
-                kx = lx_a + k * ((lx_b - lx_a) / 3.0)
-                k_col = accents[steps[k]["color"]][0]
-                b += f'<circle cx="{kx:.1f}" cy="{ly:.1f}" r="4" fill="{t["card"]}" stroke="{k_col}" stroke-width="1.8"/>'
+            # Step 04: Repeat from 01 with spinning loop icon
+            chip_w = 112.0
+            b += f'<rect x="{col_x:.1f}" y="200" width="{chip_w:.1f}" height="23" rx="7" fill="{tint}" stroke="{col}" stroke-width="1"/>'
             b += (
-                f'<g class="wf-spin">'
-                f'<path d="M {ix1-12:.1f} {ly-4:.1f} A 5 5 0 1 1 {ix1-12:.1f} {ly+4:.1f}" fill="none" stroke="{col}" stroke-width="1.6" stroke-linecap="round"/>'
-                f'<path d="M {ix1-14:.1f} {ly+4.5:.1f} L {ix1-11.5:.1f} {ly+4.2:.1f} L {ix1-12.5:.1f} {ly+1.5:.1f}" fill="none" stroke="{col}" stroke-width="1.5" stroke-linecap="round"/>'
+                f'<g transform="translate({col_x + 15:.1f} 211.5)">'
+                f'<g class="wf-spin" fill="none" stroke="{col}" stroke-width="1.3" stroke-linecap="round">'
+                f'<path d="M 2.6 -.8 a 2.6 2.6 0 1 0 .3 1.7"/>'
+                f'<path d="M 2.8 -3 v 2.4 h -2.4"/>'
+                f'</g>'
                 f'</g>'
             )
+            b += T(col_x + 64, 215.5, "Repeat from 01", 10.5, col, 700, MONO, anchor="middle")
 
     b += br
     return svg(
