@@ -409,6 +409,18 @@ def load_contributions():
         if days:
             sorted_dates = sorted(days.keys())
             fetch_end = dt.date.fromisoformat(sorted_dates[-1])
+            # Merge with local sample data if today has contributions not yet refreshed in public endpoint
+            if (ROOT / "data" / "sample-contributions.json").exists():
+                try:
+                    s_data = json.loads((ROOT / "data" / "sample-contributions.json").read_text(encoding="utf-8"))
+                    for k, v in s_data.get("days", {}).items():
+                        if k not in days or v > days[k]:
+                            days[k] = v
+                    s_end = dt.date.fromisoformat(s_data.get("end", "2000-01-01"))
+                    if s_end > fetch_end:
+                        fetch_end = s_end
+                except Exception:
+                    pass
             print("Using live GitHub data via public contributions page")
             try:
                 (ROOT / "data" / "sample-contributions.json").write_text(
@@ -592,6 +604,11 @@ def heatmap(t, dark, end, days):
 
     active = sum(1 for i in range(365) if days.get((end - dt.timedelta(days=i)).isoformat(), 0) > 0)
     total = sum(days.get((end - dt.timedelta(days=i)).isoformat(), 0) for i in range(365))
+
+    b += (
+        f'<text x="{pr}" y="76" text-anchor="end" font-family="{HEAD}" font-size="18" font-weight="700" letter-spacing="-0.5" fill="{t["secondary"]}">'
+        f'{total} contributions <tspan font-family="{MONO}" font-size="14" font-weight="500" fill="{t["muted"]}">in the last year</tspan></text>'
+    )
 
     # Weekday labels on the left (matching GitHub: Mon, Wed, Fri)
     weekdays = [(1, "Mon"), (3, "Wed"), (5, "Fri")]
