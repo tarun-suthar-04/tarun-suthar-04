@@ -23,7 +23,7 @@ CFG = json.loads((ROOT / "profile.config.json").read_text(encoding="utf-8"))
 USER = CFG["username"]
 PROFILE_URL = f"https://github.com/{USER}"
 
-HEAD = "'TeX Gyre Adventor',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
+HEAD = "'TeX Gyre Adventor','TeXGyreAdventor',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
 SERIF = "'Instrument Serif',Georgia,'Times New Roman',serif"
 MONO = "'Geist Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 
@@ -83,12 +83,37 @@ def font_style(*keys):
     rules = []
     for k in keys:
         fam, st, wt, fn = _FONT_SPECS[k]
-        if (ROOT / "fonts" / fn).exists():
-            b64 = _load_font_b64(fn)
-            rules.append(
-                f"@font-face{{font-family:'{fam}';font-style:{st};font-weight:{wt};"
-                f"src:url(data:font/woff;base64,{b64}) format('woff');}}"
-            )
+        p = ROOT / "fonts" / fn
+        if p.exists():
+            raw_bytes = p.read_bytes()
+            fam_clean = fam.replace(" ", "")
+            if p.suffix.lower() == ".otf":
+                b64_otf = base64.b64encode(raw_bytes).decode()
+                b64_woff = _load_font_b64(fn)
+                src = (
+                    f"local('{fam}'), local('{fam_clean}'), "
+                    f"url(data:font/otf;base64,{b64_otf}) format('opentype'), "
+                    f"url(data:font/woff;base64,{b64_woff}) format('woff')"
+                )
+            else:
+                b64 = _load_font_b64(fn)
+                src = f"url(data:font/woff;base64,{b64}) format('woff')"
+
+            # Generate rules for standard discrete weights so all browsers match correctly
+            weights = wt.split() if isinstance(wt, str) and " " in wt else [wt]
+            if any(x in weights for x in ("600", "700", "800", "900")) or wt in ("700", "800", "bold"):
+                weights = ["600", "700", "800", "900", "bold"]
+            elif any(x in weights for x in ("400", "500")) or wt in ("400", "normal"):
+                weights = ["400", "500", "normal"]
+
+            for w_val in weights:
+                rules.append(
+                    f"@font-face{{font-family:'{fam}';font-style:{st};font-weight:{w_val};src:{src};font-display:swap;}}"
+                )
+                if " " in fam:
+                    rules.append(
+                        f"@font-face{{font-family:'{fam_clean}';font-style:{st};font-weight:{w_val};src:{src};font-display:swap;}}"
+                    )
     return f"<style>{''.join(rules)}</style>" if rules else ""
 
 LIGHT = dict(
@@ -420,7 +445,7 @@ def _media_dims(path):
 
 
 def hero(t, dark):
-    w, h = 1000, 410
+    w, h = 1000, 360
     defs, bg, br, ix, iy, cw, ch, px, pr = card_shell(w, h, t, pad=40, rx=24)
 
     # Embedded fonts + Vertical hairline editorial grid + cubic mesh gradient
@@ -456,48 +481,45 @@ def hero(t, dark):
         f"</g></g>"
     )
 
-    # Name
+    # 1. Kicker placed JUST ABOVE the Name
+    b += f'<rect x="{px}" y="56" width="7" height="7" rx="2" fill="{t["green_bright"]}"/>'
+    b += T(px + 14, 63.5, "AI-Assisted Developer", 12.5, t["secondary"], 700, MONO, ls=0.8)
+
+    # 2. First Name: Tarun
     n1, n2 = CFG["name"]
-    b += H_fit(px, 108, n1, 74, t["text"], maxw=460, weight=800, ls=-4.4)
-    pw = est(n2, 74, 0.49) + 38
-    b += f'<rect x="{px}" y="122" width="{pw:.1f}" height="82" rx="14" fill="url(#goldPill)"/>'
-    b += H_fit(px + 19, 188, n2, 74, INK, maxw=pw - 26, weight=800, ls=-4.2)
+    b += T(px, 134, n1, 68, t["text"], 700, HEAD, ls=-3.2)
 
-    # Floating tilted handle pill
-    handle = f"@{USER}"
-    hw = est(handle, 13, 0.64) + 32
-    b += (
-        f'<g transform="translate({px+2}, 222) rotate(-1.5)">'
-        f'<rect x="0" y="0" width="{hw:.1f}" height="32" rx="16" fill="{t["pill"]}" stroke="{t["border_strong"]}" stroke-width="1"/>'
-        + T(hw / 2, 20.5, handle, 13, t["cobalt"], 600, MONO, anchor="middle")
-        + "</g>"
-    )
+    # 3. Last Name: Suthar with exact snug yellow highlight box
+    pad_x = 14.0
+    w_suthar = 188.0  # exact glyph advance in TeX Gyre Adventor bold at 68px (ls=-3.2)
+    pw = w_suthar + 2 * pad_x  # 216.0px (exact equal 14px padding on both sides)
+    b += f'<rect x="{px}" y="152" width="{pw:.1f}" height="78" rx="16" fill="url(#goldPill)"/>'
+    b += T(px + pad_x, 212, n2, 68, INK, 700, HEAD, ls=-3.2)
 
-    # Role + Tagline
-    b += T(px, 290, CFG["label"], 16, t["text"], 700, HEAD, ls=-0.5)
-    for i, ln in enumerate(wrap(CFG["tagline"], 44)[:3]):
-        b += T(px, 318 + i * 23, ln, 15, t["secondary"], 400, HEAD, ls=-0.42)
+    # 4. Tagline below (handle @tarun-suthar-04 completely removed)
+    for i, ln in enumerate(wrap(CFG["tagline"], 44)[:2]):
+        b += T(px, 268 + i * 23, ln, 15, t["secondary"], 400, HEAD, ls=-0.4)
 
-    # Right media frame: border & margins matched strictly to video aspect ratio (280:239)
+    # 5. Right media frame: smaller aspect ratio
     p_gif = ROOT / "assets" / "hero.gif"
     p_png = ROOT / "assets" / "hero.png"
     p = p_gif if p_gif.exists() else p_png
     vid_w, vid_h = _media_dims(p) if p.exists() else (280, 239)
     ratio = vid_w / vid_h
-    mw = 408.0
-    pad_x = 16.0
-    pad_y = pad_x / ratio
-    vw = mw - 2 * pad_x
+    mw = 310.0
+    pad_x_m = 12.0
+    pad_y_m = pad_x_m / ratio
+    vw = mw - 2 * pad_x_m
     vh = vw / ratio
-    mh = vh + 2 * pad_y
+    mh = vh + 2 * pad_y_m
     mx = pr - mw
     my = (h - mh) / 2
-    b += f'<rect x="{mx:.1f}" y="{my:.1f}" width="{mw:.1f}" height="{mh:.1f}" rx="20" fill="#F3F1E7" stroke="{t["border_strong"]}" stroke-width="1.5"/>'
+    b += f'<rect x="{mx:.1f}" y="{my:.1f}" width="{mw:.1f}" height="{mh:.1f}" rx="18" fill="#F3F1E7" stroke="{t["border_strong"]}" stroke-width="1.5"/>'
     if p.exists():
         mime = "image/gif" if p.suffix.lower() == ".gif" else "image/png"
         uri = base64.b64encode(p.read_bytes()).decode()
         b += (
-            f'<image x="{mx+pad_x:.1f}" y="{my+pad_y:.1f}" width="{vw:.1f}" height="{vh:.1f}" '
+            f'<image x="{mx+pad_x_m:.1f}" y="{my+pad_y_m:.1f}" width="{vw:.1f}" height="{vh:.1f}" '
             f'preserveAspectRatio="xMidYMid meet" href="data:{mime};base64,{uri}"/>'
         )
     b += br
